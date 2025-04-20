@@ -46,6 +46,8 @@ interface RegistrationFormProps {
 const RegistrationForm = ({ onSuccess }: RegistrationFormProps) => {
   const [verificationMode, setVerificationMode] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
+  const [isResendingCode, setIsResendingCode] = useState(false);
+  const [remainingTime, setRemainingTime] = useState(0);
 
   const form = useForm<RegistrationFormValues>({
     resolver: zodResolver(formSchema),
@@ -67,10 +69,39 @@ const RegistrationForm = ({ onSuccess }: RegistrationFormProps) => {
       // Simulate sending verification code
       toast.info('Verification code sent to your phone');
       setVerificationMode(true);
+      
+      // Start the resend timer
+      startResendTimer();
     } catch (error) {
       toast.error('Registration failed. Please try again.');
       console.error('Registration error:', error);
     }
+  };
+
+  const startResendTimer = () => {
+    setRemainingTime(60);
+    const timer = setInterval(() => {
+      setRemainingTime((prevTime) => {
+        if (prevTime <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prevTime - 1;
+      });
+    }, 1000);
+  };
+
+  const handleResendCode = () => {
+    if (remainingTime > 0) return;
+    
+    setIsResendingCode(true);
+    
+    // Simulate API call to resend code
+    setTimeout(() => {
+      toast.info('New verification code sent to your phone');
+      setIsResendingCode(false);
+      startResendTimer();
+    }, 1000);
   };
 
   const handleVerification = () => {
@@ -105,7 +136,7 @@ const RegistrationForm = ({ onSuccess }: RegistrationFormProps) => {
             render={({ slots }) => (
               <InputOTPGroup>
                 {slots.map((slot, index) => (
-                  <InputOTPSlot key={index} {...slot} index={index} />
+                  <InputOTPSlot key={index} index={index} />
                 ))}
               </InputOTPGroup>
             )}
@@ -113,18 +144,32 @@ const RegistrationForm = ({ onSuccess }: RegistrationFormProps) => {
           
           <Button 
             onClick={handleVerification}
-            className="ugx-button-primary w-full mt-4"
+            className="w-full mt-4"
           >
             Verify and Create Account
           </Button>
           
-          <Button
-            variant="ghost"
-            onClick={() => setVerificationMode(false)}
-            className="text-sm"
-          >
-            Back to registration
-          </Button>
+          <div className="flex flex-col items-center gap-2 w-full">
+            <p className="text-sm text-gray-500">
+              Didn't receive a code?
+            </p>
+            <Button
+              variant="ghost"
+              onClick={handleResendCode}
+              disabled={remainingTime > 0 || isResendingCode}
+              className="text-sm"
+            >
+              {remainingTime > 0 ? `Resend code (${remainingTime}s)` : 'Resend code'}
+            </Button>
+            
+            <Button
+              variant="ghost"
+              onClick={() => setVerificationMode(false)}
+              className="text-sm"
+            >
+              Back to registration
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -224,7 +269,7 @@ const RegistrationForm = ({ onSuccess }: RegistrationFormProps) => {
           )}
         />
         
-        <Button type="submit" className="ugx-button-primary w-full">
+        <Button type="submit" className="w-full">
           Create Account
         </Button>
       </form>
