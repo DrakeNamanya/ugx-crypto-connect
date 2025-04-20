@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { Link } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import Hero from '@/components/Hero';
 import Features from '@/components/Features';
@@ -30,9 +31,11 @@ const Index = () => {
               Create an account today and start your crypto journey with UGXchange.
             </p>
             <div className="mt-8 flex justify-center">
-              <button className="ugx-button-primary">
-                Create Account
-              </button>
+              <Link to="/register">
+                <button className="ugx-button-primary">
+                  Create Account
+                </button>
+              </Link>
             </div>
           </div>
         </div>
