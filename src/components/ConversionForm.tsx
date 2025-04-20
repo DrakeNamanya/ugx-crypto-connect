@@ -1,18 +1,34 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowDownUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { getUSDTRate } from '@/services/api';
+import { toast } from 'sonner';
 
 const ConversionForm = () => {
   const [fromCurrency, setFromCurrency] = useState('UGX');
   const [toCurrency, setToCurrency] = useState('USDT');
   const [amount, setAmount] = useState('');
   const [convertedAmount, setConvertedAmount] = useState('');
+  const [rates, setRates] = useState({ buy: 3700, sell: 3650 });
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Mock exchange rate: 1 USDT = 3700 UGX
-  const exchangeRate = 3700;
+  // Fetch rates on component mount
+  useEffect(() => {
+    fetchRates();
+  }, []);
+
+  const fetchRates = async () => {
+    try {
+      const rateData = await getUSDTRate();
+      setRates(rateData);
+    } catch (error) {
+      console.error('Error fetching rates:', error);
+      toast.error('Failed to fetch current exchange rates');
+    }
+  };
 
   const handleSwap = () => {
     const temp = fromCurrency;
@@ -28,9 +44,9 @@ const ConversionForm = () => {
     const numAmount = parseFloat(amount);
     
     if (fromCurrency === 'UGX' && toCurrency === 'USDT') {
-      setConvertedAmount((numAmount / exchangeRate).toFixed(2));
+      setConvertedAmount((numAmount / rates.sell).toFixed(2));
     } else if (fromCurrency === 'USDT' && toCurrency === 'UGX') {
-      setConvertedAmount((numAmount * exchangeRate).toFixed(2));
+      setConvertedAmount((numAmount * rates.buy).toFixed(2));
     }
   };
 
@@ -100,7 +116,9 @@ const ConversionForm = () => {
       
       {fromCurrency && toCurrency && (
         <div className="text-xs text-gray-500 text-center">
-          Exchange Rate: {fromCurrency === 'UGX' ? '1 USDT = 3,700 UGX' : '1 UGX = 0.00027 USDT'}
+          Exchange Rate: {fromCurrency === 'UGX' 
+            ? `1 USDT = ${rates.sell.toLocaleString()} UGX` 
+            : `1 UGX = ${(1/rates.buy).toFixed(6)} USDT`}
         </div>
       )}
       
@@ -109,6 +127,15 @@ const ConversionForm = () => {
         className="w-full ugx-button-primary mt-4"
       >
         Convert
+      </Button>
+      
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={fetchRates}
+        className="w-full text-xs"
+      >
+        Refresh Rates
       </Button>
     </div>
   );

@@ -1,6 +1,9 @@
 
 // API service for UGXchange
 
+// Base URL for API requests
+const API_BASE_URL = '/api/v1';
+
 // Mobile Money Integration
 export const mobileMoneyProviders = {
   MTN: 'MTN Mobile Money',
@@ -19,75 +22,101 @@ export interface WithdrawalRequest {
   provider: 'MTN' | 'AIRTEL';
 }
 
-export const initiateDeposit = async (request: DepositRequest): Promise<{ reference: string }> => {
-  console.log('Initiating deposit:', request);
-  
-  // This would be an actual API call in production
-  // Example for MTN Mobile Money integration:
-  if (request.provider === 'MTN') {
-    try {
-      // Simulating MTN Mobile Money API call
-      // In a real implementation, you would use the MTN_CLIENT_ID and MTN_SECRET from env variables
-      
-      // Mock successful response
-      return { reference: `DEP${Date.now()}` };
-    } catch (error) {
-      console.error('MTN deposit error:', error);
-      throw new Error('Failed to initiate MTN deposit');
-    }
-  }
-  
-  // Example for Airtel Money integration:
-  if (request.provider === 'AIRTEL') {
-    try {
-      // Simulating Airtel Money API call
-      // In a real implementation, you would use the AIRTEL_API_KEY from env variables
-      
-      // Mock successful response
-      return { reference: `DEP${Date.now()}` };
-    } catch (error) {
-      console.error('Airtel deposit error:', error);
-      throw new Error('Failed to initiate Airtel deposit');
-    }
-  }
-  
-  throw new Error('Unsupported mobile money provider');
-};
+export interface UserRegistration {
+  fullName: string;
+  email: string;
+  phone: string;
+  password: string;
+}
 
-export const initiateWithdrawal = async (request: WithdrawalRequest): Promise<{ reference: string }> => {
-  console.log('Initiating withdrawal:', request);
-  
-  // This would be an actual API call in production
-  // Mock successful response
-  return { reference: `WD${Date.now()}` };
-};
-
-// Binance Integration
 export interface CryptoTransferRequest {
   amount: number;
   walletAddress: string;
   asset: string; // e.g., 'USDT'
 }
 
-export const getUSDTRate = async (): Promise<{ buy: number; sell: number }> => {
-  // In a real application, this would fetch the current exchange rate from Binance API
-  // using BINANCE_API_KEY and BINANCE_SECRET_KEY from env variables
-  
-  // Mock response with typical UGX/USDT rates
-  return {
-    buy: 3700, // UGX per 1 USDT (when buying USDT)
-    sell: 3650  // UGX per 1 USDT (when selling USDT)
-  };
+// Generic fetch function with error handling
+const fetchApi = async (endpoint: string, options: RequestInit = {}) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Request failed with status ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error(`API Error (${endpoint}):`, error);
+    throw error;
+  }
 };
 
+// User Registration
+export const registerUser = async (userData: UserRegistration): Promise<{ success: boolean; message: string }> => {
+  const response = await fetchApi('/users/register', {
+    method: 'POST',
+    body: JSON.stringify(userData),
+  });
+  
+  return response;
+};
+
+// Mobile Money Deposit
+export const initiateDeposit = async (request: DepositRequest): Promise<{ reference: string }> => {
+  console.log('Initiating deposit:', request);
+  
+  const response = await fetchApi('/deposit/mobile-money', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  });
+  
+  return { reference: response.reference };
+};
+
+// Mobile Money Withdrawal
+export const initiateWithdrawal = async (request: WithdrawalRequest): Promise<{ reference: string }> => {
+  console.log('Initiating withdrawal:', request);
+  
+  const response = await fetchApi('/withdraw/mobile-money', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  });
+  
+  return { reference: response.reference };
+};
+
+// Get USDT Exchange Rate
+export const getUSDTRate = async (): Promise<{ buy: number; sell: number }> => {
+  const response = await fetchApi('/rates');
+  return response;
+};
+
+// Crypto Transfer
 export const transferCrypto = async (request: CryptoTransferRequest): Promise<{ txId: string }> => {
   console.log('Initiating crypto transfer:', request);
   
-  // This would be an actual API call to Binance in production
-  // Mock successful response
-  return { txId: `TX${Date.now()}` };
+  const response = await fetchApi('/crypto/transfer', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  });
+  
+  return { txId: response.txId };
 };
 
+// Get Transaction History
+export const getTransactions = async (): Promise<any[]> => {
+  const response = await fetchApi('/transactions');
+  return response.transactions;
+};
+
+// Validate Ugandan Phone Number
 export const validateUgandanPhone = (phone: string): boolean => {
   const ugandanPhoneRegex = /^(0|256|\+256)7[0-9]{8}$/;
   return ugandanPhoneRegex.test(phone);

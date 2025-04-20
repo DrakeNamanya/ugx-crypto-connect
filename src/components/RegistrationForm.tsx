@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -16,6 +15,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { registerUser } from '@/services/api';
 
 // Regex pattern for Ugandan phone numbers
 const ugandanPhoneRegex = /^(0|256|\+256)7[0-9]{8}$/;
@@ -48,6 +48,8 @@ const RegistrationForm = ({ onSuccess }: RegistrationFormProps) => {
   const [verificationCode, setVerificationCode] = useState('');
   const [isResendingCode, setIsResendingCode] = useState(false);
   const [remainingTime, setRemainingTime] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [userData, setUserData] = useState<RegistrationFormValues | null>(null);
 
   const form = useForm<RegistrationFormValues>({
     resolver: zodResolver(formSchema),
@@ -63,8 +65,10 @@ const RegistrationForm = ({ onSuccess }: RegistrationFormProps) => {
 
   const onSubmit = async (values: RegistrationFormValues) => {
     try {
-      // In a real application, this would be an API call to register the user
-      console.log('Registration data:', values);
+      setIsSubmitting(true);
+      
+      // Store the user data for later registration
+      setUserData(values);
       
       // Simulate sending verification code
       toast.info('Verification code sent to your phone');
@@ -75,6 +79,8 @@ const RegistrationForm = ({ onSuccess }: RegistrationFormProps) => {
     } catch (error) {
       toast.error('Registration failed. Please try again.');
       console.error('Registration error:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -104,18 +110,40 @@ const RegistrationForm = ({ onSuccess }: RegistrationFormProps) => {
     }, 1000);
   };
 
-  const handleVerification = () => {
+  const handleVerification = async () => {
     if (verificationCode.length !== 6) {
       toast.error('Please enter a valid 6-digit verification code');
       return;
     }
 
-    // In a real application, this would verify the code with an API
-    console.log('Verifying code:', verificationCode);
-    
-    // Simulate successful verification
-    toast.success('Phone number verified successfully');
-    onSuccess();
+    if (!userData) {
+      toast.error('Registration data not found');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      
+      // Call the API to register the user
+      const result = await registerUser({
+        fullName: userData.fullName,
+        email: userData.email,
+        phone: userData.phone,
+        password: userData.password
+      });
+      
+      if (result.success) {
+        toast.success('Phone number verified successfully');
+        onSuccess();
+      } else {
+        toast.error(result.message || 'Registration failed');
+      }
+    } catch (error) {
+      toast.error('Registration failed. Please try again.');
+      console.error('Registration error:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (verificationMode) {
@@ -144,9 +172,10 @@ const RegistrationForm = ({ onSuccess }: RegistrationFormProps) => {
           
           <Button 
             onClick={handleVerification}
+            disabled={isSubmitting}
             className="w-full mt-4"
           >
-            Verify and Create Account
+            {isSubmitting ? 'Processing...' : 'Verify and Create Account'}
           </Button>
           
           <div className="flex flex-col items-center gap-2 w-full">
@@ -269,8 +298,12 @@ const RegistrationForm = ({ onSuccess }: RegistrationFormProps) => {
           )}
         />
         
-        <Button type="submit" className="w-full">
-          Create Account
+        <Button 
+          type="submit" 
+          disabled={isSubmitting}
+          className="w-full"
+        >
+          {isSubmitting ? 'Processing...' : 'Create Account'}
         </Button>
       </form>
     </Form>

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { transferCrypto, validateUgandanPhone } from '@/services/api';
 
 interface TransferFormProps {
   direction: 'send' | 'receive';
@@ -14,6 +15,7 @@ const TransferForm = ({ direction }: TransferFormProps) => {
   const [walletAddress, setWalletAddress] = useState('');
   const [amount, setAmount] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Mock wallet address for receive
   const myWalletAddress = '0x742d35Cc6634C0532925a3b844Bc454e4438f44e';
@@ -23,19 +25,46 @@ const TransferForm = ({ direction }: TransferFormProps) => {
     toast.success('Wallet address copied to clipboard');
   };
   
-  const handleTransfer = () => {
+  const handleTransfer = async () => {
     if (direction === 'send') {
       if (!walletAddress || !amount) {
         toast.error('Please fill in all fields');
         return;
       }
-      toast.success('Transfer initiated');
+      
+      setIsSubmitting(true);
+      try {
+        const result = await transferCrypto({
+          amount: parseFloat(amount),
+          walletAddress: walletAddress,
+          asset: 'USDT'
+        });
+        
+        toast.success(`Transfer initiated successfully. Transaction ID: ${result.txId}`);
+        setWalletAddress('');
+        setAmount('');
+      } catch (error) {
+        toast.error('Transfer failed. Please try again.');
+        console.error('Transfer error:', error);
+      } finally {
+        setIsSubmitting(false);
+      }
     } else {
       if (!amount || !phoneNumber) {
         toast.error('Please fill in all fields');
         return;
       }
+      
+      if (!validateUgandanPhone(phoneNumber)) {
+        toast.error('Please enter a valid Ugandan phone number');
+        return;
+      }
+      
+      // Here we would handle the withdrawal to mobile money
+      // For now, just show a success message
       toast.success('Withdrawal request submitted');
+      setAmount('');
+      setPhoneNumber('');
     }
   };
   
@@ -68,10 +97,11 @@ const TransferForm = ({ direction }: TransferFormProps) => {
           
           <Button 
             onClick={handleTransfer}
+            disabled={isSubmitting}
             className="w-full ugx-button-primary mt-4 flex items-center gap-2 justify-center"
           >
             <Send size={16} />
-            Send USDT
+            {isSubmitting ? 'Processing...' : 'Send USDT'}
           </Button>
         </>
       ) : (
