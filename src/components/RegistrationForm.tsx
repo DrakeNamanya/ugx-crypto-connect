@@ -105,7 +105,7 @@ const RegistrationForm = ({ onSuccess }: RegistrationFormProps) => {
             render={({ slots }) => (
               <InputOTPGroup>
                 {slots.map((slot, index) => (
-                  <InputOTPSlot key={index} index={index} {...slot} />
+                  <InputOTPSlot key={index} {...slot} index={index} />
                 ))}
               </InputOTPGroup>
             )}
