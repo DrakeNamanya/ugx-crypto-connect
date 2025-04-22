@@ -29,7 +29,7 @@ const formSchema = z.object({
   path: ['confirmPassword'],
 });
 
-type RegistrationFormValues = z.infer<typeof formSchema>;
+export type RegistrationFormValues = z.infer<typeof formSchema>;
 
 interface RegistrationFormProps {
   onSuccess: () => void;
@@ -83,7 +83,12 @@ const RegistrationForm = ({ onSuccess }: RegistrationFormProps) => {
         phone={userData.phone}
         onBack={() => setVerificationMode(false)}
         onSuccess={onSuccess}
-        userData={userData}
+        userData={{
+          fullName: userData.fullName,
+          email: userData.email,
+          phone: userData.phone,
+          password: userData.password,
+        }}
       />
     );
   }

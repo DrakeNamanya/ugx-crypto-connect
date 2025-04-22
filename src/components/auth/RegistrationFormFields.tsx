@@ -11,15 +11,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-
-interface RegistrationFormValues {
-  fullName: string;
-  email: string;
-  phone: string;
-  password: string;
-  confirmPassword: string;
-  terms: boolean;
-}
+import { RegistrationFormValues } from '@/components/RegistrationForm';
 
 interface RegistrationFormFieldsProps {
   form: UseFormReturn<RegistrationFormValues>;

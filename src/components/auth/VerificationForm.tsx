@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
@@ -9,16 +8,18 @@ import {
 } from '@/components/ui/input-otp';
 import { registerUser } from '@/services/api';
 
+interface UserData {
+  fullName: string;
+  email: string;
+  phone: string;
+  password: string;
+}
+
 interface VerificationFormProps {
   phone: string;
   onBack: () => void;
   onSuccess: () => void;
-  userData: {
-    fullName: string;
-    email: string;
-    phone: string;
-    password: string;
-  };
+  userData: UserData;
 }
 
 const VerificationForm = ({ phone, onBack, onSuccess, userData }: VerificationFormProps) => {
@@ -45,7 +46,6 @@ const VerificationForm = ({ phone, onBack, onSuccess, userData }: VerificationFo
     
     setIsResendingCode(true);
     
-    // Simulate API call to resend code
     setTimeout(() => {
       toast.success('New verification code sent to your phone');
       setIsResendingCode(false);
@@ -62,7 +62,6 @@ const VerificationForm = ({ phone, onBack, onSuccess, userData }: VerificationFo
     try {
       setIsSubmitting(true);
       
-      // Call the API to register the user
       const result = await registerUser(userData);
       
       if (result.success) {
