@@ -1,6 +1,10 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+} from "@/components/ui/carousel";
 
 const Hero = () => {
   return (
@@ -39,7 +43,33 @@ const Hero = () => {
         </div>
       </div>
       <div className="lg:absolute lg:inset-y-0 lg:right-0 lg:w-1/2">
-        <div className="h-56 w-full bg-ugx-purple sm:h-72 md:h-96 lg:h-full ugx-gradient opacity-90"></div>
+        <div className="h-56 w-full sm:h-72 md:h-96 lg:h-full relative bg-gradient-to-r from-ugx-purple to-ugx-blue opacity-90">
+          <Carousel className="w-full h-full" opts={{ loop: true, duration: 30 }}>
+            <CarouselContent>
+              <CarouselItem className="flex items-center justify-center p-6">
+                <img 
+                  src="/african-mobile-money-1.jpg" 
+                  alt="Young African using mobile money"
+                  className="rounded-lg shadow-xl animate-fade-in w-full h-full object-cover"
+                />
+              </CarouselItem>
+              <CarouselItem className="flex items-center justify-center p-6">
+                <img 
+                  src="/african-mobile-money-2.jpg"
+                  alt="Mobile money transfer" 
+                  className="rounded-lg shadow-xl animate-fade-in w-full h-full object-cover"
+                />
+              </CarouselItem>
+              <CarouselItem className="flex items-center justify-center p-6">
+                <img 
+                  src="/african-mobile-money-3.jpg"
+                  alt="Digital payment in Africa"
+                  className="rounded-lg shadow-xl animate-fade-in w-full h-full object-cover"
+                />
+              </CarouselItem>
+            </CarouselContent>
+          </Carousel>
+        </div>
       </div>
     </div>
   );
