@@ -14,8 +14,12 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
-import { registerUser } from '@/services/api';
+import { 
+  InputOTP, 
+  InputOTPGroup, 
+  InputOTPSlot 
+} from '@/components/ui/input-otp';
+import { registerUser, validateUgandanPhone } from '@/services/api';
 
 // Regex pattern for Ugandan phone numbers
 const ugandanPhoneRegex = /^(0|256|\+256)7[0-9]{8}$/;
@@ -67,11 +71,18 @@ const RegistrationForm = ({ onSuccess }: RegistrationFormProps) => {
     try {
       setIsSubmitting(true);
       
+      // Validate phone number
+      if (!validateUgandanPhone(values.phone)) {
+        toast.error('Please enter a valid Ugandan phone number');
+        setIsSubmitting(false);
+        return;
+      }
+      
       // Store the user data for later registration
       setUserData(values);
       
       // Simulate sending verification code
-      toast.info('Verification code sent to your phone');
+      toast.success('Verification code sent to your phone');
       setVerificationMode(true);
       
       // Start the resend timer
@@ -104,7 +115,7 @@ const RegistrationForm = ({ onSuccess }: RegistrationFormProps) => {
     
     // Simulate API call to resend code
     setTimeout(() => {
-      toast.info('New verification code sent to your phone');
+      toast.success('New verification code sent to your phone');
       setIsResendingCode(false);
       startResendTimer();
     }, 1000);
@@ -154,25 +165,30 @@ const RegistrationForm = ({ onSuccess }: RegistrationFormProps) => {
           <p className="text-sm text-gray-600 mt-1">
             We've sent a 6-digit code to your phone number
           </p>
+          {userData && (
+            <p className="text-sm font-medium mt-2">{userData.phone}</p>
+          )}
         </div>
         
         <div className="flex flex-col items-center gap-4">
-          <InputOTP 
-            maxLength={6}
-            value={verificationCode}
-            onChange={setVerificationCode}
-            render={({ slots }) => (
-              <InputOTPGroup>
-                {slots.map((slot, index) => (
-                  <InputOTPSlot key={index} index={index} />
-                ))}
-              </InputOTPGroup>
-            )}
-          />
+          <div className="w-full">
+            <InputOTP 
+              maxLength={6}
+              value={verificationCode}
+              onChange={setVerificationCode}
+              render={({ slots }) => (
+                <InputOTPGroup className="gap-2 justify-center">
+                  {slots.map((slot, i) => (
+                    <InputOTPSlot key={i} index={i} />
+                  ))}
+                </InputOTPGroup>
+              )}
+            />
+          </div>
           
           <Button 
             onClick={handleVerification}
-            disabled={isSubmitting}
+            disabled={isSubmitting || verificationCode.length !== 6}
             className="w-full mt-4"
           >
             {isSubmitting ? 'Processing...' : 'Verify and Create Account'}
