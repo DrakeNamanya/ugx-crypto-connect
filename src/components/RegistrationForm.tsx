@@ -52,20 +52,37 @@ const RegistrationForm = ({ onSuccess }: RegistrationFormProps) => {
 
   const sendOtpToPhone = async (phone: string) => {
     try {
+      // Format the phone number to include the country code if it doesn't already
+      const formattedPhone = phone.startsWith('+') 
+        ? phone 
+        : phone.startsWith('0') 
+          ? '+256' + phone.substring(1) 
+          : phone;
+          
+      console.log('Sending OTP to:', formattedPhone);
+      
       const res = await fetch('/api/v1/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone }),
+        body: JSON.stringify({ phone: formattedPhone }),
       });
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || `Server error: ${res.status}`);
+      }
+      
       const data = await res.json();
       if (!data.success) {
         toast.error(data.message || 'Failed to send verification code');
         return false;
       }
+      
       toast.success('Verification code sent to your phone');
       return true;
     } catch (e) {
-      toast.error('Failed to send verification code.');
+      console.error('OTP sending error:', e);
+      toast.error('Failed to send verification code. Please check your connection and try again.');
       return false;
     }
   };

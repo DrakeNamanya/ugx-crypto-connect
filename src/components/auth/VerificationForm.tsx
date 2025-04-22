@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
 import { 
@@ -29,15 +29,36 @@ const VerificationForm = ({ phone, onBack, onSuccess, userData }: VerificationFo
   const [remainingTime, setRemainingTime] = useState(60);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Start timer on component mount
+  useEffect(() => {
+    startResendTimer();
+  }, []);
+
   // Call API to resend code (Twilio)
   const resendCode = async () => {
     try {
       setIsResendingCode(true);
+      
+      // Format the phone number to include the country code if it doesn't already
+      const formattedPhone = phone.startsWith('+') 
+        ? phone 
+        : phone.startsWith('0') 
+          ? '+256' + phone.substring(1) 
+          : phone;
+          
+      console.log('Resending OTP to:', formattedPhone);
+      
       const res = await fetch('/api/v1/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone }),
+        body: JSON.stringify({ phone: formattedPhone }),
       });
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || `Server error: ${res.status}`);
+      }
+      
       const data = await res.json();
       if (data.success) {
         toast.success('New verification code sent to your phone');
@@ -46,7 +67,8 @@ const VerificationForm = ({ phone, onBack, onSuccess, userData }: VerificationFo
         toast.error(data.message || 'Failed to send code');
       }
     } catch (e) {
-      toast.error('Failed to send code');
+      console.error('OTP resending error:', e);
+      toast.error('Failed to send code. Please check your connection and try again.');
     } finally {
       setIsResendingCode(false);
     }
@@ -80,17 +102,35 @@ const VerificationForm = ({ phone, onBack, onSuccess, userData }: VerificationFo
     }
     try {
       setIsSubmitting(true);
+      
+      // Format the phone number to include the country code if it doesn't already
+      const formattedPhone = phone.startsWith('+') 
+        ? phone 
+        : phone.startsWith('0') 
+          ? '+256' + phone.substring(1) 
+          : phone;
+          
       // Step 1: Verify OTP
       const resp = await fetch('/api/v1/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, code: verificationCode }),
+        body: JSON.stringify({ 
+          phone: formattedPhone, 
+          code: verificationCode 
+        }),
       });
+      
+      if (!resp.ok) {
+        const errorData = await resp.json().catch(() => ({}));
+        throw new Error(errorData.message || `Server error: ${resp.status}`);
+      }
+      
       const data = await resp.json();
       if (!data.success) {
         toast.error(data.message || 'Verification failed');
         return;
       }
+      
       // Step 2: Register user
       const result = await registerUser(userData);
       if (result.success) {
@@ -100,8 +140,8 @@ const VerificationForm = ({ phone, onBack, onSuccess, userData }: VerificationFo
         toast.error(result.message || 'Registration failed');
       }
     } catch (error) {
-      toast.error('Registration failed. Please try again.');
-      console.error('Registration error:', error);
+      console.error('Verification error:', error);
+      toast.error('Verification failed. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
