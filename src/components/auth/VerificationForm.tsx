@@ -1,5 +1,5 @@
-// Update the VerificationForm.tsx to send OTP and use a 6-digit input interface
-updated_verification_form_code = """
+# Properly formatted TypeScript + React JSX content for VerificationForm.tsx
+clean_verification_form_code = """
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
@@ -107,8 +107,8 @@ const VerificationForm = ({ phone, onBack, onSuccess, userData }: VerificationFo
 export default VerificationForm;
 """
 
-# Write the updated content to VerificationForm.tsx
+# Overwrite the VerificationForm.tsx file with clean TypeScript
 with open(verification_form_path, 'w', encoding='utf-8') as f:
-    f.write(updated_verification_form_code)
+    f.write(clean_verification_form_code)
 
 verification_form_path
