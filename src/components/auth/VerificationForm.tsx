@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
@@ -28,6 +29,29 @@ const VerificationForm = ({ phone, onBack, onSuccess, userData }: VerificationFo
   const [remainingTime, setRemainingTime] = useState(60);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Call API to resend code (Twilio)
+  const resendCode = async () => {
+    try {
+      setIsResendingCode(true);
+      const res = await fetch('/api/v1/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('New verification code sent to your phone');
+        setRemainingTime(60);
+      } else {
+        toast.error(data.message || 'Failed to send code');
+      }
+    } catch (e) {
+      toast.error('Failed to send code');
+    } finally {
+      setIsResendingCode(false);
+    }
+  };
+
   const startResendTimer = () => {
     setRemainingTime(60);
     const timer = setInterval(() => {
@@ -41,29 +65,34 @@ const VerificationForm = ({ phone, onBack, onSuccess, userData }: VerificationFo
     }, 1000);
   };
 
-  const handleResendCode = () => {
+  // Resend code button
+  const handleResendCode = async () => {
     if (remainingTime > 0) return;
-    
-    setIsResendingCode(true);
-    
-    setTimeout(() => {
-      toast.success('New verification code sent to your phone');
-      setIsResendingCode(false);
-      startResendTimer();
-    }, 1000);
+    await resendCode();
+    startResendTimer();
   };
 
+  // Verifies OTP via API, then registers user
   const handleVerification = async () => {
     if (verificationCode.length !== 6) {
       toast.error('Please enter a valid 6-digit verification code');
       return;
     }
-
     try {
       setIsSubmitting(true);
-      
+      // Step 1: Verify OTP
+      const resp = await fetch('/api/v1/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, code: verificationCode }),
+      });
+      const data = await resp.json();
+      if (!data.success) {
+        toast.error(data.message || 'Verification failed');
+        return;
+      }
+      // Step 2: Register user
       const result = await registerUser(userData);
-      
       if (result.success) {
         toast.success('Phone number verified successfully');
         onSuccess();

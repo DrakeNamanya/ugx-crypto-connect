@@ -9,10 +9,8 @@ import { validateUgandanPhone } from '@/services/api';
 import VerificationForm from './auth/VerificationForm';
 import RegistrationFormFields from './auth/RegistrationFormFields';
 
-// Regex pattern for Ugandan phone numbers
 const ugandanPhoneRegex = /^(0|256|\+256)7[0-9]{8}$/;
 
-// Form validation schema
 const formSchema = z.object({
   fullName: z.string().min(3, { message: 'Full name must be at least 3 characters' }),
   email: z.string().email({ message: 'Please enter a valid email address' }),
@@ -52,22 +50,47 @@ const RegistrationForm = ({ onSuccess }: RegistrationFormProps) => {
     },
   });
 
+  const sendOtpToPhone = async (phone: string) => {
+    try {
+      const res = await fetch('/api/v1/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        toast.error(data.message || 'Failed to send verification code');
+        return false;
+      }
+      toast.success('Verification code sent to your phone');
+      return true;
+    } catch (e) {
+      toast.error('Failed to send verification code.');
+      return false;
+    }
+  };
+
   const onSubmit = async (values: RegistrationFormValues) => {
     try {
       setIsSubmitting(true);
-      
+
       // Validate phone number
       if (!validateUgandanPhone(values.phone)) {
         toast.error('Please enter a valid Ugandan phone number');
         setIsSubmitting(false);
         return;
       }
-      
+
+      // Send OTP to phone
+      const sent = await sendOtpToPhone(values.phone);
+      if (!sent) {
+        setIsSubmitting(false);
+        return;
+      }
+
       // Store the user data for later registration
       setUserData(values);
-      
-      // Simulate sending verification code
-      toast.success('Verification code sent to your phone');
+
       setVerificationMode(true);
     } catch (error) {
       toast.error('Registration failed. Please try again.');

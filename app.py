@@ -6,31 +6,83 @@ import time
 import random
 import string
 
-# Load environment variables
+# Twilio integration
+from twilio.rest import Client
+
+# Load environment variables or use provided credentials (for demo ONLY)
 load_dotenv()
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "AC1a0a6aba823fa1020e2426f99f23336a")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "077bb4af35e577cff2fd4f1122f73508")
+TWILIO_FROM_PHONE = os.getenv("TWILIO_FROM_PHONE", "+15056057194")
 
 app = Flask(__name__)
 
 # Mock database
 users = []
 transactions = []
+pending_otps = {}  # phone: {code, created_at}
 
-# Helper functions
 def generate_reference():
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
 
+# --- OTP HANDLING ---
+
+def generate_otp():
+    return ''.join([str(random.randint(0, 9)) for _ in range(6)])
+
+@app.route('/api/v1/send-otp', methods=['POST'])
+def send_otp():
+    data = request.json
+    phone = data.get("phone")
+    if not phone:
+        return jsonify({'success': False, 'message': 'Phone number required'}), 400
+
+    # Generate OTP code
+    otp = generate_otp()
+    pending_otps[phone] = {
+        "code": otp,
+        "created_at": time.time()
+    }
+
+    # Send OTP via Twilio
+    try:
+        client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+        message = client.messages.create(
+            body=f"Your UGXchange verification code is: {otp}",
+            from_=TWILIO_FROM_PHONE,
+            to=phone if phone.startswith('+') else "+256" + phone.lstrip('0')
+        )
+        return jsonify({'success': True, 'message': 'Verification code sent'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Twilio error: {str(e)}'}), 500
+
+@app.route('/api/v1/verify-otp', methods=['POST'])
+def verify_otp():
+    data = request.json
+    phone = data.get("phone")
+    code = data.get("code")
+    record = pending_otps.get(phone)
+    if not record:
+        return jsonify({'success': False, 'message': 'No OTP sent for this phone'})
+    if time.time() - record['created_at'] > 300:  # Expire after 5 min
+        return jsonify({'success': False, 'message': 'Verification code expired'})
+    if record['code'] != code:
+        return jsonify({'success': False, 'message': 'Invalid verification code'})
+    # Success! Remove OTP
+    del pending_otps[phone]
+    return jsonify({'success': True, 'message': 'Phone verified'})
+
+# --- Existing endpoints ---
 @app.route('/api/v1/rates', methods=['GET'])
 def get_rates():
-    # In a real app, this would fetch from Binance API
     return jsonify({
-        'buy': 3700,  # UGX per 1 USDT when buying USDT
-        'sell': 3650  # UGX per 1 USDT when selling USDT
+        'buy': 3700,
+        'sell': 3650
     })
 
 @app.route('/api/v1/users/register', methods=['POST'])
 def register_user():
     data = request.json
-    # In a real app, this would validate and store in a database
     users.append({
         'id': len(users) + 1,
         'fullName': data.get('fullName'),
@@ -43,18 +95,6 @@ def register_user():
 @app.route('/api/v1/deposit/mobile-money', methods=['POST'])
 def deposit_mobile_money():
     data = request.json
-    
-    # Simulate MTN Mobile Money API integration
-    if data.get('provider') == 'MTN':
-        # In a real app, would use MTN_CLIENT_ID and MTN_SECRET
-        pass
-    
-    # Simulate Airtel Money API integration
-    elif data.get('provider') == 'AIRTEL':
-        # In a real app, would use AIRTEL_API_KEY
-        pass
-    
-    # Create transaction record
     transaction = {
         'id': len(transactions) + 1,
         'type': 'deposit',
@@ -66,8 +106,6 @@ def deposit_mobile_money():
         'created_at': time.time()
     }
     transactions.append(transaction)
-    
-    # In a real app, this would initiate the actual payment request
     return jsonify({
         'success': True,
         'reference': transaction['reference'],
@@ -77,8 +115,6 @@ def deposit_mobile_money():
 @app.route('/api/v1/withdraw/mobile-money', methods=['POST'])
 def withdraw_mobile_money():
     data = request.json
-    
-    # Create transaction record
     transaction = {
         'id': len(transactions) + 1,
         'type': 'withdrawal',
@@ -90,8 +126,6 @@ def withdraw_mobile_money():
         'created_at': time.time()
     }
     transactions.append(transaction)
-    
-    # In a real app, this would initiate the actual withdrawal
     return jsonify({
         'success': True,
         'reference': transaction['reference'],
@@ -101,8 +135,6 @@ def withdraw_mobile_money():
 @app.route('/api/v1/crypto/transfer', methods=['POST'])
 def transfer_crypto():
     data = request.json
-    
-    # Create transaction record
     transaction = {
         'id': len(transactions) + 1,
         'type': 'transfer',
@@ -114,8 +146,6 @@ def transfer_crypto():
         'created_at': time.time()
     }
     transactions.append(transaction)
-    
-    # In a real app, this would use BINANCE_API_KEY and BINANCE_SECRET_KEY
     return jsonify({
         'success': True,
         'txId': transaction['txId'],
@@ -124,7 +154,6 @@ def transfer_crypto():
 
 @app.route('/api/v1/transactions', methods=['GET'])
 def get_transactions():
-    # In a real app, this would filter by user ID
     return jsonify({
         'success': True,
         'transactions': transactions
