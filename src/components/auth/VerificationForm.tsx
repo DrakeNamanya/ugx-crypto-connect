@@ -1,4 +1,4 @@
-# Update the VerificationForm.tsx to send OTP and use a 6-digit input interface
+// Update the VerificationForm.tsx to send OTP and use a 6-digit input interface
 updated_verification_form_code = """
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
