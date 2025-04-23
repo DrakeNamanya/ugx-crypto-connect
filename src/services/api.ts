@@ -35,6 +35,9 @@ export interface CryptoTransferRequest {
   asset: string; // e.g., 'USDT'
 }
 
+// Import Airtel payment functionality
+export { initiateAirtelPayment } from './airtelPayment';
+
 // Generic fetch function with error handling
 const fetchApi = async (endpoint: string, options: RequestInit = {}) => {
   try {
