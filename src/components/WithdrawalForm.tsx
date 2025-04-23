@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -21,7 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { mobileMoneyProviders, initiateWithdrawal, getUSDTRate } from '@/services/api';
+import { mobileMoneyProviders, getUSDTRate } from '@/services/api';
+import { initiateAirtelWithdrawal } from '@/services/airtelDisbursement';
 import { useQuery } from '@tanstack/react-query';
 
 // Form validation schema
@@ -59,21 +59,30 @@ const WithdrawalForm = () => {
     try {
       setIsSubmitting(true);
       
-      // Call the withdrawal API
-      const result = await initiateWithdrawal({
-        amount: values.amount,
-        phoneNumber: values.phoneNumber,
-        provider: values.provider,
-      });
+      // Generate a unique reference for this transaction
+      const reference = `WDR${Math.random().toString(36).substring(2, 10)}${Date.now()}`;
       
-      toast.success('Withdrawal request initiated successfully');
-      toast.info(`You will receive funds on your mobile money shortly. Reference: ${result.reference}`);
-      
-      // Reset the form
-      form.reset();
+      if (values.provider === 'AIRTEL') {
+        const result = await initiateAirtelWithdrawal({
+          amount: values.amount,
+          phoneNumber: values.phoneNumber,
+          reference,
+        });
+        
+        if (result) {
+          toast.success('Withdrawal request processed successfully');
+          toast.info(`Funds will be sent to ${values.phoneNumber}`, {
+            description: `Reference: ${reference}`,
+          });
+          form.reset();
+        }
+      } else {
+        // MTN implementation will go here when ready
+        toast.error('MTN integration coming soon');
+      }
     } catch (error) {
-      toast.error('Failed to initiate withdrawal. Please try again.');
       console.error('Withdrawal error:', error);
+      toast.error('Failed to process withdrawal. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
