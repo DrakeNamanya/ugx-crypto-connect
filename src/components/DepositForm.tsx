@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -21,9 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { mobileMoneyProviders, initiateDeposit } from '@/services/api';
+import { mobileMoneyProviders, initiateDeposit, initiateAirtelPayment } from '@/services/api';
 
-// Form validation schema
 const formSchema = z.object({
   amount: z.coerce.number().min(5000, { message: 'Minimum deposit is 5,000 UGX' }),
   phoneNumber: z.string().regex(/^(0|256|\+256)7[0-9]{8}$/, { 
@@ -52,18 +50,33 @@ const DepositForm = () => {
     try {
       setIsSubmitting(true);
       
-      // Call the deposit API
-      const result = await initiateDeposit({
-        amount: values.amount,
-        phoneNumber: values.phoneNumber,
-        provider: values.provider,
-      });
-      
-      toast.success('Deposit request initiated successfully');
-      toast.info(`Check your phone for payment prompt. Reference: ${result.reference}`);
-      
-      // Reset the form
-      form.reset();
+      if (values.provider === 'AIRTEL') {
+        const result = await initiateAirtelPayment({
+          amount: values.amount,
+          phoneNumber: values.phoneNumber,
+          reference: Math.random().toString(36).substring(7),
+        });
+        
+        if (result) {
+          toast.success('Deposit request initiated successfully');
+          toast.info(`Check your phone for payment prompt. Reference: ${result.reference}`);
+          
+          // Reset the form
+          form.reset();
+        }
+      } else {
+        const result = await initiateDeposit({
+          amount: values.amount,
+          phoneNumber: values.phoneNumber,
+          provider: values.provider,
+        });
+        
+        toast.success('Deposit request initiated successfully');
+        toast.info(`Check your phone for payment prompt. Reference: ${result.reference}`);
+        
+        // Reset the form
+        form.reset();
+      }
     } catch (error) {
       toast.error('Failed to initiate deposit. Please try again.');
       console.error('Deposit error:', error);
