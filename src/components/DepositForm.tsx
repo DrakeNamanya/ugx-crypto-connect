@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -51,15 +52,16 @@ const DepositForm = () => {
       setIsSubmitting(true);
       
       if (values.provider === 'AIRTEL') {
+        const reference = Math.random().toString(36).substring(7);
         const result = await initiateAirtelPayment({
           amount: values.amount,
           phoneNumber: values.phoneNumber,
-          reference: Math.random().toString(36).substring(7),
+          reference: reference,
         });
         
         if (result) {
           toast.success('Deposit request initiated successfully');
-          toast.info(`Check your phone for payment prompt. Reference: ${result.reference}`);
+          toast.info(`Check your phone for payment prompt. Reference: ${reference}`);
           
           // Reset the form
           form.reset();
