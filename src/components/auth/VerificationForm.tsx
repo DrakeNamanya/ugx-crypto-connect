@@ -1,6 +1,4 @@
-# Fully clean and overwrite the VerificationForm.tsx file with correct TypeScript content
 
-clean_verified_code = """
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
@@ -106,10 +104,3 @@ const VerificationForm: React.FC<VerificationFormProps> = ({ phone, onBack, onSu
 };
 
 export default VerificationForm;
-"""
-
-# Overwrite the file now
-with open(verification_form_path, 'w', encoding='utf-8') as f:
-    f.write(clean_verified_code)
-
-verification_form_path
