@@ -17,43 +17,67 @@ serve(async (req) => {
 
     const { amount, phoneNumber, reference }: RequestBody = await req.json();
 
+    // Clean up the phone number format (remove +256 or 256 prefix if present)
+    const cleanPhoneNumber = phoneNumber.replace(/^\+?256/, '0');
+
     const headers = {
       'Accept': '*/*',
       'Content-Type': 'application/json',
       'X-Country': 'UG',
       'X-Currency': 'UGX',
-      'Authorization': Deno.env.get('AIRTEL_AUTH_TOKEN'),
-      'x-signature': Deno.env.get('AIRTEL_SIGNATURE'),
-      'x-key': Deno.env.get('AIRTEL_API_KEY'),
+      'Authorization': `Bearer ${Deno.env.get('AIRTEL_AUTH_TOKEN')}`,
+      'X-Merchant-Code': 'FZIQOYM9',
+      'X-Reference-Id': reference,
     };
+
+    const body = {
+      reference,
+      subscriber: {
+        country: 'UG',
+        currency: 'UGX',
+        msisdn: cleanPhoneNumber,
+      },
+      transaction: {
+        amount,
+        country: 'UG',
+        currency: 'UGX',
+        id: reference
+      }
+    };
+
+    console.log('Making Airtel API request:', {
+      url: AIRTEL_API_URL,
+      method: 'POST',
+      headers: { ...headers, Authorization: '[REDACTED]' },
+      body
+    });
 
     const response = await fetch(AIRTEL_API_URL, {
       method: 'POST',
       headers,
-      body: JSON.stringify({
-        reference,
-        subscriber: {
-          country: 'UG',
-          currency: 'UGX',
-          msisdn: phoneNumber,
-        },
-        transaction: {
-          amount,
-          country: 'UG',
-          currency: 'UGX',
-          id: reference
-        }
-      })
+      body: JSON.stringify(body)
     });
 
     const data = await response.json();
+    console.log('Airtel API response:', data);
 
-    return new Response(JSON.stringify(data), {
+    if (!response.ok) {
+      throw new Error(data.message || `Request failed with status ${response.status}`);
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      data
+    }), {
       headers: { 'Content-Type': 'application/json' },
-      status: response.ok ? 200 : response.status,
+      status: 200,
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error('Airtel collection error:', error);
+    return new Response(JSON.stringify({ 
+      success: false,
+      error: error.message || 'Failed to process payment request' 
+    }), {
       headers: { 'Content-Type': 'application/json' },
       status: 500,
     });

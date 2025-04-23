@@ -21,7 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { mobileMoneyProviders, initiateDeposit, initiateAirtelPayment } from '@/services/api';
+import { mobileMoneyProviders } from '@/services/api';
+import { initiateAirtelPayment } from '@/services/airtelPayment';
 
 const formSchema = z.object({
   amount: z.coerce.number().min(5000, { message: 'Minimum deposit is 5,000 UGX' }),
@@ -51,8 +52,10 @@ const DepositForm = () => {
     try {
       setIsSubmitting(true);
       
+      // Generate a unique reference for this transaction
+      const reference = `DEP${Math.random().toString(36).substring(2, 10)}${Date.now()}`;
+      
       if (values.provider === 'AIRTEL') {
-        const reference = Math.random().toString(36).substring(7);
         const result = await initiateAirtelPayment({
           amount: values.amount,
           phoneNumber: values.phoneNumber,
@@ -60,28 +63,19 @@ const DepositForm = () => {
         });
         
         if (result) {
-          toast.success('Deposit request initiated successfully');
-          toast.info(`Check your phone for payment prompt. Reference: ${reference}`);
-          
-          // Reset the form
+          toast.success('Collection request sent successfully');
+          toast.info(`Please check your phone (${values.phoneNumber}) for the payment prompt`, {
+            description: `Reference: ${reference}`,
+          });
           form.reset();
         }
       } else {
-        const result = await initiateDeposit({
-          amount: values.amount,
-          phoneNumber: values.phoneNumber,
-          provider: values.provider,
-        });
-        
-        toast.success('Deposit request initiated successfully');
-        toast.info(`Check your phone for payment prompt. Reference: ${result.reference}`);
-        
-        // Reset the form
-        form.reset();
+        // MTN implementation will go here when ready
+        toast.error('MTN integration coming soon');
       }
     } catch (error) {
-      toast.error('Failed to initiate deposit. Please try again.');
       console.error('Deposit error:', error);
+      toast.error('Failed to initiate deposit. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
