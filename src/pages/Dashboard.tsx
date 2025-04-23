@@ -1,11 +1,14 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowDownUp, CreditCard, ArrowUp, ArrowDown, DollarSign, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ArrowDownUp, ArrowUp, ArrowDown, DollarSign, RefreshCw } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import ExchangeCard from '@/components/ExchangeCard';
+import DepositForm from '@/components/DepositForm';
+import WithdrawalForm from '@/components/WithdrawalForm';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // Mock transaction data
 const transactions = [
@@ -58,9 +61,38 @@ const Dashboard = () => {
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div>
-              <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
-              <ExchangeCard />
+            <div className="space-y-6">
+              <h2 className="text-xl font-semibold">Quick Actions</h2>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Wallet Operations</CardTitle>
+                  <CardDescription>Deposit or withdraw funds from your wallet</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Tabs defaultValue="deposit" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="deposit">Deposit</TabsTrigger>
+                      <TabsTrigger value="withdraw">Withdraw</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="deposit" className="mt-4">
+                      <DepositForm />
+                    </TabsContent>
+                    <TabsContent value="withdraw" className="mt-4">
+                      <WithdrawalForm />
+                    </TabsContent>
+                  </Tabs>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Exchange</CardTitle>
+                  <CardDescription>Convert between UGX and USDT</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ExchangeCard />
+                </CardContent>
+              </Card>
             </div>
             
             <div>
