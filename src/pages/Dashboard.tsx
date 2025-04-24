@@ -1,7 +1,8 @@
-import React from 'react';
+
+import React, { useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowDownUp, ArrowUp, ArrowDown, DollarSign, RefreshCw } from 'lucide-react';
+import { ArrowDownUp, ArrowUp, ArrowDown, DollarSign, RefreshCw, UserCheck, UserX } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -9,6 +10,13 @@ import ExchangeCard from '@/components/ExchangeCard';
 import DepositForm from '@/components/DepositForm';
 import WithdrawalForm from '@/components/WithdrawalForm';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+  isKYCVerified, 
+  isKYCSubmitted, 
+  isAccountBlocked,
+  showKYCReminderIfNeeded 
+} from '@/services/kycVerification';
+import { toast } from '@/components/ui/sonner';
 
 // Mock transaction data
 const transactions = [
@@ -20,13 +28,80 @@ const transactions = [
 ];
 
 const Dashboard = () => {
+  const kycVerified = isKYCVerified();
+  const kycSubmitted = isKYCSubmitted();
+  const accountBlocked = isAccountBlocked();
+  
+  useEffect(() => {
+    if (accountBlocked) {
+      toast.error(
+        'Your account has been restricted',
+        {
+          description: 'Please complete identity verification to continue using UGXchange',
+          action: {
+            label: 'Verify Now',
+            onClick: () => window.location.href = '/kyc-verification',
+          },
+          duration: 0, // Don't auto-dismiss
+        }
+      );
+    } else {
+      showKYCReminderIfNeeded();
+    }
+  }, [accountBlocked]);
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
       
       <main className="flex-grow bg-gray-50 py-6">
         <div className="container mx-auto px-4">
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">Dashboard</h1>
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+            <div className="flex items-center space-x-2">
+              {kycVerified ? (
+                <div className="flex items-center text-green-600 bg-green-50 px-3 py-1 rounded-full">
+                  <UserCheck size={16} className="mr-1" />
+                  <span className="text-sm font-medium">Verified</span>
+                </div>
+              ) : kycSubmitted ? (
+                <div className="flex items-center text-amber-600 bg-amber-50 px-3 py-1 rounded-full">
+                  <RefreshCw size={16} className="mr-1" />
+                  <span className="text-sm font-medium">Pending Verification</span>
+                </div>
+              ) : (
+                <Link to="/kyc-verification">
+                  <Button size="sm" variant="outline" className="flex items-center">
+                    <UserX size={16} className="mr-1 text-red-500" />
+                    <span>Verify Identity</span>
+                  </Button>
+                </Link>
+              )}
+            </div>
+          </div>
+          
+          {!kycVerified && (
+            <Card className="mb-6 bg-amber-50 border-amber-200">
+              <CardContent className="pt-6">
+                <div className="flex items-start space-x-4">
+                  <div className="bg-amber-100 p-3 rounded-full">
+                    <UserCheck className="h-6 w-6 text-amber-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-amber-800">Verification Required</h3>
+                    <p className="text-amber-700 mt-1 text-sm">
+                      Unverified accounts can only deposit up to 200,000 UGX and withdraw up to 50,000 UGX.
+                    </p>
+                    <Link to="/kyc-verification">
+                      <Button size="sm" variant="outline" className="mt-2 bg-white border-amber-300 hover:bg-amber-100">
+                        Complete Verification
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <Card>

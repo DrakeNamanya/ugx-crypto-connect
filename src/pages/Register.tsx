@@ -11,6 +11,30 @@ const Register = () => {
 
   const handleSuccess = () => {
     toast.success("Account created successfully!");
+    
+    // Initialize KYC status in local storage
+    localStorage.setItem('userCreationDate', new Date().toISOString());
+    localStorage.setItem('kycStatus', JSON.stringify({
+      isVerified: false,
+      submittedAt: null,
+      expiryDate: null,
+      reminderCount: 0
+    }));
+
+    // Show KYC prompt
+    toast.info(
+      "Verify your identity to unlock full functionality",
+      {
+        description: "Complete KYC verification to access higher transaction limits",
+        action: {
+          label: "Verify Now",
+          onClick: () => navigate('/kyc-verification'),
+        },
+        duration: 8000,
+      }
+    );
+
+    // Navigate to dashboard
     navigate('/dashboard');
   };
 
