@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Bitcoin, DollarSign } from 'lucide-react';
@@ -50,11 +49,6 @@ const Hero = () => {
             <CarouselContent>
               <CarouselItem className="flex items-center justify-center p-6">
                 <div className="relative w-full h-full flex items-center justify-center">
-                  <img 
-                    src="/african-mobile-money-1.jpg" 
-                    alt="Young African using mobile money"
-                    className="rounded-lg shadow-xl w-full h-full object-cover opacity-50"
-                  />
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="flex gap-4 animate-bounce">
                       <Bitcoin className="h-16 w-16 text-yellow-500" />
@@ -120,4 +114,3 @@ const Hero = () => {
 };
 
 export default Hero;
-
