@@ -1,4 +1,3 @@
-
 // API service for UGXchange
 
 // Base URL for API requests
@@ -37,6 +36,9 @@ export interface CryptoTransferRequest {
 
 // Import Airtel payment functionality
 export { initiateAirtelPayment } from './airtelPayment';
+
+// Axios for API requests
+import axios from 'axios';
 
 // Generic fetch function with error handling
 const fetchApi = async (endpoint: string, options: RequestInit = {}) => {
@@ -95,10 +97,31 @@ export const initiateWithdrawal = async (request: WithdrawalRequest): Promise<{ 
   return { reference: response.reference };
 };
 
-// Get USDT Exchange Rate
+// Fetch rates from CoinGecko
 export const getUSDTRate = async (): Promise<{ buy: number; sell: number }> => {
-  const response = await fetchApi('/rates');
-  return response;
+  try {
+    const response = await axios.get('https://api.coingecko.com/api/v3/simple/price', {
+      params: {
+        ids: 'tether',
+        vs_currencies: 'ugx'
+      }
+    });
+
+    const baseRate = response.data.tether.ugx;
+    const profitMargin = 50; // 50 UGX profit margin
+
+    return {
+      buy: Math.ceil(baseRate + profitMargin), // When user buys USDT from us (we sell)
+      sell: Math.floor(baseRate - profitMargin) // When user sells USDT to us (we buy)
+    };
+  } catch (error) {
+    console.error('Error fetching rates from CoinGecko:', error);
+    // Fallback rates in case API fails
+    return {
+      buy: 3750, // Base + 50 UGX
+      sell: 3650 // Base - 50 UGX
+    };
+  }
 };
 
 // Crypto Transfer
