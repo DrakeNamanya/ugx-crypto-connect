@@ -1,5 +1,7 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { Bitcoin, DollarSign } from 'lucide-react';
 import {
   Carousel,
   CarouselContent,
@@ -44,28 +46,70 @@ const Hero = () => {
       </div>
       <div className="lg:absolute lg:inset-y-0 lg:right-0 lg:w-1/2">
         <div className="h-56 w-full sm:h-72 md:h-96 lg:h-full relative bg-gradient-to-r from-ugx-purple to-ugx-blue opacity-90">
-          <Carousel className="w-full h-full" opts={{ loop: true, duration: 30 }}>
+          <Carousel className="w-full h-full" opts={{ loop: true, duration: 20 }}>
             <CarouselContent>
               <CarouselItem className="flex items-center justify-center p-6">
-                <img 
-                  src="/african-mobile-money-1.jpg" 
-                  alt="Young African using mobile money"
-                  className="rounded-lg shadow-xl animate-fade-in w-full h-full object-cover"
-                />
+                <div className="relative w-full h-full flex items-center justify-center">
+                  <img 
+                    src="/african-mobile-money-1.jpg" 
+                    alt="Young African using mobile money"
+                    className="rounded-lg shadow-xl w-full h-full object-cover opacity-50"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="flex gap-4 animate-bounce">
+                      <Bitcoin className="h-16 w-16 text-yellow-500" />
+                      <DollarSign className="h-16 w-16 text-green-500" />
+                    </div>
+                  </div>
+                </div>
               </CarouselItem>
               <CarouselItem className="flex items-center justify-center p-6">
-                <img 
-                  src="/african-mobile-money-2.jpg"
-                  alt="Mobile money transfer" 
-                  className="rounded-lg shadow-xl animate-fade-in w-full h-full object-cover"
-                />
+                <div className="relative w-full h-full flex items-center justify-center">
+                  <img 
+                    src="/african-mobile-money-2.jpg"
+                    alt="Mobile money transfer" 
+                    className="rounded-lg shadow-xl w-full h-full object-cover opacity-50"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="flex gap-4 animate-pulse">
+                      <img 
+                        src="https://cryptologos.cc/logos/tether-usdt-logo.png"
+                        alt="USDT"
+                        className="h-16 w-16"
+                      />
+                      <img 
+                        src="https://cryptologos.cc/logos/ethereum-eth-logo.png"
+                        alt="ETH"
+                        className="h-16 w-16"
+                      />
+                    </div>
+                  </div>
+                </div>
               </CarouselItem>
               <CarouselItem className="flex items-center justify-center p-6">
-                <img 
-                  src="/african-mobile-money-3.jpg"
-                  alt="Digital payment in Africa"
-                  className="rounded-lg shadow-xl animate-fade-in w-full h-full object-cover"
-                />
+                <div className="relative w-full h-full flex items-center justify-center">
+                  <img 
+                    src="/african-mobile-money-3.jpg"
+                    alt="Digital payment in Africa"
+                    className="rounded-lg shadow-xl w-full h-full object-cover opacity-50"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="grid grid-cols-2 gap-4 animate-fade-in">
+                      <Bitcoin className="h-16 w-16 text-yellow-500" />
+                      <img 
+                        src="https://cryptologos.cc/logos/tether-usdt-logo.png"
+                        alt="USDT"
+                        className="h-16 w-16"
+                      />
+                      <img 
+                        src="https://cryptologos.cc/logos/ethereum-eth-logo.png"
+                        alt="ETH"
+                        className="h-16 w-16"
+                      />
+                      <DollarSign className="h-16 w-16 text-green-500" />
+                    </div>
+                  </div>
+                </div>
               </CarouselItem>
             </CarouselContent>
           </Carousel>
@@ -76,3 +120,4 @@ const Hero = () => {
 };
 
 export default Hero;
+
