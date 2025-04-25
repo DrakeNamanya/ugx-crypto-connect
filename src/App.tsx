@@ -25,11 +25,13 @@ const queryClient = new QueryClient({
       staleTime: 1000 * 60 * 5, // 5 minutes
       retry: 1,
       refetchOnWindowFocus: true,
-      onError: (error: any) => {
-        console.error('Query error:', error);
-        // Show a toast for network errors
-        if (error?.message?.includes('network') || error?.message?.includes('Failed to fetch')) {
-          toast.error('Network error. Please check your connection.');
+      meta: {
+        onError: (error: any) => {
+          console.error('Query error:', error);
+          // Show a toast for network errors
+          if (error?.message?.includes('network') || error?.message?.includes('Failed to fetch')) {
+            toast.error('Network error. Please check your connection.');
+          }
         }
       }
     },
