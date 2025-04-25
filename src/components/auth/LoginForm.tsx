@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -16,6 +16,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { supabase } from '@/integrations/supabase/client';
+import { AlertCircle } from 'lucide-react';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address' }),
@@ -25,6 +26,7 @@ const formSchema = z.object({
 const LoginForm = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -37,6 +39,8 @@ const LoginForm = () => {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       setIsLoading(true);
+      setAuthError(null);
+      
       const { error } = await supabase.auth.signInWithPassword({
         email: values.email,
         password: values.password,
@@ -49,7 +53,18 @@ const LoginForm = () => {
       toast.success('Successfully signed in!');
       navigate('/dashboard');
     } catch (error: any) {
-      toast.error(error.message || 'Failed to sign in');
+      console.error('Login error:', error);
+      
+      // Handle specific error cases
+      if (error.message.includes('Invalid login credentials')) {
+        setAuthError('Invalid email or password. Please try again.');
+      } else if (error.message.includes('Email not confirmed')) {
+        setAuthError('Please verify your email address before logging in.');
+      } else {
+        setAuthError(error.message || 'Failed to sign in');
+      }
+      
+      toast.error('Login failed');
     } finally {
       setIsLoading(false);
     }
@@ -58,6 +73,13 @@ const LoginForm = () => {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        {authError && (
+          <div className="p-3 rounded-md bg-destructive/15 text-destructive flex items-start space-x-2">
+            <AlertCircle className="h-5 w-5 mt-0.5" />
+            <span>{authError}</span>
+          </div>
+        )}
+        
         <FormField
           control={form.control}
           name="email"
@@ -71,12 +93,21 @@ const LoginForm = () => {
             </FormItem>
           )}
         />
+        
         <FormField
           control={form.control}
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <div className="flex items-center justify-between">
+                <FormLabel>Password</FormLabel>
+                <Link 
+                  to="/forgot-password" 
+                  className="text-xs text-primary hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
               <FormControl>
                 <Input placeholder="••••••••" type="password" {...field} />
               </FormControl>
@@ -84,6 +115,7 @@ const LoginForm = () => {
             </FormItem>
           )}
         />
+        
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading ? 'Signing in...' : 'Sign in'}
         </Button>
