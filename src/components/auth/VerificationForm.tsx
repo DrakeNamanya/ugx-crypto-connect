@@ -26,42 +26,9 @@ interface VerificationFormProps {
 
 const VerificationForm: React.FC<VerificationFormProps> = ({ phone, onBack, onSuccess, userData }) => {
   const [verificationCode, setVerificationCode] = useState('');
-  const [generatedCode, setGeneratedCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResendingCode, setIsResendingCode] = useState(false);
   const [remainingTime, setRemainingTime] = useState(60);
-
-  useEffect(() => {
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    setGeneratedCode(code);
-    sendOtp(phone, code);
-  }, [phone]);
-
-  const handleVerify = async () => {
-    setIsSubmitting(true);
-    if (verificationCode === generatedCode) {
-      try {
-        await registerUser(userData);
-        toast.success("Phone number verified!");
-        onSuccess();
-      } catch (error) {
-        toast.error("Registration failed.");
-      }
-    } else {
-      toast.error("Incorrect verification code.");
-    }
-    setIsSubmitting(false);
-  };
-
-  const handleResend = async () => {
-    if (remainingTime > 0) return;
-    const newCode = Math.floor(100000 + Math.random() * 900000).toString();
-    setGeneratedCode(newCode);
-    setIsResendingCode(true);
-    await sendOtp(phone, newCode);
-    setIsResendingCode(false);
-    setRemainingTime(60);
-  };
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -70,13 +37,69 @@ const VerificationForm: React.FC<VerificationFormProps> = ({ phone, onBack, onSu
     return () => clearInterval(timer);
   }, []);
 
+  const handleVerify = async () => {
+    if (verificationCode.length !== 6) {
+      toast.error('Please enter a valid 6-digit code');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch('/api/v1/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          phone,
+          code: verificationCode
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Verification failed');
+      }
+
+      // If verification successful, proceed with user registration
+      await registerUser(userData);
+      toast.success("Phone number verified and account created!");
+      onSuccess();
+    } catch (error: any) {
+      toast.error(error.message || 'Verification failed');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (remainingTime > 0) return;
+    
+    setIsResendingCode(true);
+    try {
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const sent = await sendOtp(phone, code);
+      if (sent) {
+        toast.success('New verification code sent');
+        setRemainingTime(60);
+      } else {
+        throw new Error('Failed to send new code');
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to resend code');
+    } finally {
+      setIsResendingCode(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold text-center">Enter the 6-digit code sent to {phone}</h2>
+      <h2 className="text-xl font-semibold text-center">
+        Enter the 6-digit code sent to {phone}
+      </h2>
       <InputOTP
         maxLength={6}
         value={verificationCode}
         onChange={setVerificationCode}
+        className="gap-2"
       >
         <InputOTPGroup>
           {Array.from({ length: 6 }).map((_, i) => (
@@ -88,14 +111,22 @@ const VerificationForm: React.FC<VerificationFormProps> = ({ phone, onBack, onSu
         {remainingTime > 0 ? (
           <span>Resend available in {remainingTime}s</span>
         ) : (
-          <button onClick={handleResend} disabled={isResendingCode}>
+          <Button 
+            onClick={handleResend} 
+            disabled={isResendingCode} 
+            variant="link"
+            className="p-0"
+          >
             {isResendingCode ? 'Resending...' : 'Resend Code'}
-          </button>
+          </Button>
         )}
       </div>
       <div className="flex justify-between">
         <Button onClick={onBack} variant="outline">Back</Button>
-        <Button onClick={handleVerify} disabled={isSubmitting}>
+        <Button 
+          onClick={handleVerify} 
+          disabled={isSubmitting || verificationCode.length !== 6}
+        >
           {isSubmitting ? 'Verifying...' : 'Verify'}
         </Button>
       </div>

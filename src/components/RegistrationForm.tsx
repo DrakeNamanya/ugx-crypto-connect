@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -15,7 +14,7 @@ const formSchema = z.object({
   fullName: z.string().min(3, { message: 'Full name must be at least 3 characters' }),
   email: z.string().email({ message: 'Please enter a valid email address' }),
   phone: z.string().regex(ugandanPhoneRegex, { 
-    message: 'Please enter a valid Ugandan phone number starting with 07, 2567, or +2567' 
+    message: 'Please enter a valid Ugandan phone number (e.g., 0771234567 or +256771234567)' 
   }),
   password: z.string().min(8, { message: 'Password must be at least 8 characters' }),
   confirmPassword: z.string(),
@@ -50,68 +49,48 @@ const RegistrationForm = ({ onSuccess }: RegistrationFormProps) => {
     },
   });
 
-  const sendOtpToPhone = async (phone: string) => {
-    try {
-      // Format the phone number to include the country code if it doesn't already
-      const formattedPhone = phone.startsWith('+') 
-        ? phone 
-        : phone.startsWith('0') 
-          ? '+256' + phone.substring(1) 
-          : phone;
-          
-      console.log('Sending OTP to:', formattedPhone);
-      
-      const res = await fetch('/api/v1/send-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: formattedPhone }),
-      });
-      
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || `Server error: ${res.status}`);
-      }
-      
-      const data = await res.json();
-      if (!data.success) {
-        toast.error(data.message || 'Failed to send verification code');
-        return false;
-      }
-      
-      toast.success('Verification code sent to your phone');
-      return true;
-    } catch (e) {
-      console.error('OTP sending error:', e);
-      toast.error('Failed to send verification code. Please check your connection and try again.');
-      return false;
-    }
-  };
-
   const onSubmit = async (values: RegistrationFormValues) => {
     try {
       setIsSubmitting(true);
 
       // Validate phone number
-      if (!validateUgandanPhone(values.phone)) {
+      const formattedPhone = values.phone.startsWith('+') 
+        ? values.phone 
+        : values.phone.startsWith('0') 
+          ? '+256' + values.phone.substring(1) 
+          : '+256' + values.phone;
+
+      if (!validateUgandanPhone(formattedPhone)) {
         toast.error('Please enter a valid Ugandan phone number');
         setIsSubmitting(false);
         return;
       }
 
-      // Send OTP to phone
-      const sent = await sendOtpToPhone(values.phone);
-      if (!sent) {
-        setIsSubmitting(false);
-        return;
+      // Generate and send OTP
+      const response = await fetch('/api/v1/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          phone: formattedPhone,
+          code: Math.floor(100000 + Math.random() * 900000).toString()
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to send verification code');
       }
 
-      // Store the user data for later registration
-      setUserData(values);
-
+      // Store the user data and move to verification mode
+      setUserData({
+        ...values,
+        phone: formattedPhone
+      });
       setVerificationMode(true);
+      toast.success('Verification code sent to your phone');
     } catch (error) {
-      toast.error('Registration failed. Please try again.');
       console.error('Registration error:', error);
+      toast.error(error.message || 'Failed to start registration');
     } finally {
       setIsSubmitting(false);
     }
@@ -123,12 +102,7 @@ const RegistrationForm = ({ onSuccess }: RegistrationFormProps) => {
         phone={userData.phone}
         onBack={() => setVerificationMode(false)}
         onSuccess={onSuccess}
-        userData={{
-          fullName: userData.fullName,
-          email: userData.email,
-          phone: userData.phone,
-          password: userData.password,
-        }}
+        userData={userData}
       />
     );
   }
