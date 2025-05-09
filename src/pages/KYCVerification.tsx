@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -36,9 +37,23 @@ const ugandaDistricts = [
   "Tororo", "Soroti", "Fort Portal", "Hoima", "Kabale"
 ];
 
-const subCounties: Record<string, string[]> = {
+// Expanded sub-counties data for all districts
+const subCounties = {
   "Kampala": ["Central", "Kawempe", "Makindye", "Nakawa", "Rubaga"],
-  // ... other districts
+  "Wakiso": ["Nansana", "Kira", "Entebbe", "Makindye-Ssabagabo", "Katabi"],
+  "Mukono": ["Mukono Central", "Goma", "Kyampisi", "Nama", "Ntenjeru"],
+  "Jinja": ["Jinja North", "Jinja South", "Budondo", "Butagaya", "Mafubira"],
+  "Gulu": ["Gulu City", "Pece-Laroo", "Bardege-Layibi", "Palaro", "Patiko"],
+  "Mbarara": ["Mbarara City", "Nyamitanga", "Kakoba", "Kamukuzi", "Biharwe"],
+  "Mbale": ["Mbale City", "Industrial", "Northern", "Wanale", "Nyondo"],
+  "Masaka": ["Masaka City", "Kimaanya-Kyabakuza", "Nyendo-Mukungwe", "Katwe-Butego", "Kimanya-Kabonera"],
+  "Arua": ["Arua City", "Ayivu", "River Oli", "Adumi", "Pajulu"],
+  "Lira": ["Lira City", "Adyel", "Ojwina", "Railways", "Central"],
+  "Tororo": ["Tororo Municipality", "Eastern", "Western", "Merikit", "Molo"],
+  "Soroti": ["Soroti City", "Eastern", "Western", "Northern", "Southern"],
+  "Fort Portal": ["Fort Portal City", "East", "West", "South", "Central"],
+  "Hoima": ["Hoima City", "Busiisi", "Mparo", "Bujumbura", "Kahoora"],
+  "Kabale": ["Kabale Municipality", "Northern", "Southern", "Central", "Kamuganguzi"]
 };
 
 const formSchema = z.object({
@@ -91,6 +106,7 @@ const KYCVerification = () => {
   });
 
   const handleDistrictChange = (district: string) => {
+    console.log("District selected:", district);
     setSelectedDistrict(district);
     form.setValue('subCounty', '');
   };
@@ -281,7 +297,7 @@ const KYCVerification = () => {
                           <FormLabel>Sub-County</FormLabel>
                           <Select 
                             onValueChange={field.onChange}
-                            defaultValue={field.value}
+                            value={field.value}
                             disabled={!selectedDistrict}
                           >
                             <FormControl>
