@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -116,12 +117,18 @@ const RegistrationForm = ({ onSuccess }: RegistrationFormProps) => {
   };
 
   if (verificationMode && userData) {
+    // Ensure all required properties are present when passing to VerificationForm
     return (
       <VerificationForm
         phone={userData.phone}
         onBack={() => setVerificationMode(false)}
         onSuccess={onSuccess}
-        userData={userData}
+        userData={{
+          fullName: userData.fullName,
+          email: userData.email,
+          phone: userData.phone,
+          password: userData.password
+        }}
       />
     );
   }

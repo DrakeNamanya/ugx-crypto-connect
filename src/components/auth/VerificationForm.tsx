@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
@@ -75,13 +76,15 @@ const VerificationForm: React.FC<VerificationFormProps> = ({ phone, onBack, onSu
     
     setIsResendingCode(true);
     try {
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
-      const sent = await sendOTP(phone, code);
-      if (sent) {
+      // Generate a new code for demo purposes (in a real app, the backend would do this)
+      // Note: We removed the second argument since sendOTP only accepts one parameter
+      const { success, error } = await sendOTP(phone);
+      
+      if (success) {
         toast.success('New verification code sent');
         setRemainingTime(60);
       } else {
-        throw new Error('Failed to send new code');
+        throw new Error(error || 'Failed to send new code');
       }
     } catch (error: any) {
       toast.error(error.message || 'Failed to resend code');

@@ -1,3 +1,4 @@
+
 // API service for UGXchange
 const API_BASE_URL = '/api/v1';
 import axios from 'axios';
@@ -70,7 +71,7 @@ const fetchApi = async <T>(endpoint: string, options: RequestInit = {}): Promise
   }
 };
 
-// New OTP Service Functions
+// New OTP Service Functions - updated to accept only one parameter (phone)
 export const sendOTP = async (phone: string): Promise<OTPSendResponse> => {
   try {
     const response = await fetchApi<{ 
