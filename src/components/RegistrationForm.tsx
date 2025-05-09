@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -5,7 +6,7 @@ import * as z from 'zod';
 import { toast } from '@/components/ui/sonner';
 import { Form } from '@/components/ui/form';
 import { validateUgandanPhone } from '@/services/api';
-import VerificationForm from './auth/VerificationForm';
+import VerificationForm, { UserData } from './auth/VerificationForm';
 import RegistrationFormFields from './auth/RegistrationFormFields';
 
 const ugandanPhoneRegex = /^(0|256|\+256)7[0-9]{8}$/;
@@ -35,7 +36,7 @@ interface RegistrationFormProps {
 const RegistrationForm = ({ onSuccess }: RegistrationFormProps) => {
   const [verificationMode, setVerificationMode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [userData, setUserData] = useState<RegistrationFormValues | null>(null);
+  const [userData, setUserData] = useState<UserData | null>(null);
 
   const form = useForm<RegistrationFormValues>({
     resolver: zodResolver(formSchema),
@@ -82,10 +83,14 @@ const RegistrationForm = ({ onSuccess }: RegistrationFormProps) => {
       }
 
       // Store the user data and move to verification mode
+      // Make sure userData conforms to the UserData interface by explicitly setting required fields
       setUserData({
-        ...values,
-        phone: formattedPhone
+        fullName: values.fullName,
+        email: values.email,
+        phone: formattedPhone,
+        password: values.password
       });
+      
       setVerificationMode(true);
       toast.success('Verification code sent to your phone');
     } catch (error) {

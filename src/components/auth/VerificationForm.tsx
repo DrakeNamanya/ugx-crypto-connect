@@ -10,7 +10,8 @@ import {
 import { registerUser } from '@/services/api';
 import { sendOtp } from '@/services/sendOtp';
 
-interface UserData {
+// Make sure this interface matches what's being passed from RegistrationForm
+export interface UserData {
   fullName: string;
   email: string;
   phone: string;
