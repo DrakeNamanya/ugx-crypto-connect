@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
@@ -8,7 +7,7 @@ import {
   InputOTPSlot
 } from '@/components/ui/input-otp';
 import { registerUser } from '@/services/api';
-import { sendOtp } from '@/services/sendOtp';
+import { sendOTP } from '@/services/api';
 
 // Make sure this interface matches what's being passed from RegistrationForm
 export interface UserData {
@@ -77,7 +76,7 @@ const VerificationForm: React.FC<VerificationFormProps> = ({ phone, onBack, onSu
     setIsResendingCode(true);
     try {
       const code = Math.floor(100000 + Math.random() * 900000).toString();
-      const sent = await sendOtp(phone, code);
+      const sent = await sendOTP(phone, code);
       if (sent) {
         toast.success('New verification code sent');
         setRemainingTime(60);
