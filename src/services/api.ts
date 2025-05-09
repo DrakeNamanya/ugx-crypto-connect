@@ -1,4 +1,3 @@
-
 // API service for UGXchange
 const API_BASE_URL = '/api/v1';
 import axios from 'axios';
@@ -9,7 +8,7 @@ export const mobileMoneyProviders = {
   AIRTEL: 'Airtel Money'
 };
 
-// Interfaces (keep existing and add OTP-related ones)
+// Interfaces (keep existing and add email-related ones)
 export interface DepositRequest {
   amount: number;
   phoneNumber: string;
@@ -33,12 +32,6 @@ export interface CryptoTransferRequest {
   amount: number;
   walletAddress: string;
   asset: string;
-}
-
-export interface OTPSendResponse {
-  success: boolean;
-  debugCode?: string;
-  error?: string;
 }
 
 // Improved phone validation with better regex
@@ -68,32 +61,6 @@ const fetchApi = async <T>(endpoint: string, options: RequestInit = {}): Promise
   } catch (error) {
     console.error(`API Error (${endpoint}):`, error);
     throw error;
-  }
-};
-
-// New OTP Service Functions - updated to accept only one parameter (phone)
-export const sendOTP = async (phone: string): Promise<OTPSendResponse> => {
-  try {
-    const response = await fetchApi<{ 
-      success: boolean; 
-      code?: string; 
-      message?: string 
-    }>('/send-otp', {
-      method: 'POST',
-      body: JSON.stringify({ phone }),
-    });
-
-    return {
-      success: response.success,
-      debugCode: process.env.NODE_ENV === 'development' ? response.code : undefined,
-      error: response.message
-    };
-  } catch (error) {
-    console.error('OTP Send Error:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Failed to send OTP' 
-    };
   }
 };
 

@@ -7,10 +7,11 @@ import {
   InputOTPGroup,
   InputOTPSlot
 } from '@/components/ui/input-otp';
-import { registerUser } from '@/services/api';
-import { sendOTP } from '@/services/api';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 
-// Make sure this interface matches what's being passed from RegistrationForm
+// This component is temporarily disabled as we've switched to email verification
+// It will be reimplemented later with Twilio integration for phone verification
+
 export interface UserData {
   fullName: string;
   email: string;
@@ -25,115 +26,26 @@ interface VerificationFormProps {
   userData: UserData;
 }
 
-const VerificationForm: React.FC<VerificationFormProps> = ({ phone, onBack, onSuccess, userData }) => {
-  const [verificationCode, setVerificationCode] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isResendingCode, setIsResendingCode] = useState(false);
-  const [remainingTime, setRemainingTime] = useState(60);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setRemainingTime((prevTime) => (prevTime > 0 ? prevTime - 1 : 0));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const handleVerify = async () => {
-    if (verificationCode.length !== 6) {
-      toast.error('Please enter a valid 6-digit code');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const response = await fetch('/api/v1/verify-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          phone,
-          code: verificationCode
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Verification failed');
-      }
-
-      // If verification successful, proceed with user registration
-      await registerUser(userData);
-      toast.success("Phone number verified and account created!");
-      onSuccess();
-    } catch (error: any) {
-      toast.error(error.message || 'Verification failed');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleResend = async () => {
-    if (remainingTime > 0) return;
-    
-    setIsResendingCode(true);
-    try {
-      // Generate a new code for demo purposes (in a real app, the backend would do this)
-      // Note: We removed the second argument since sendOTP only accepts one parameter
-      const { success, error } = await sendOTP(phone);
-      
-      if (success) {
-        toast.success('New verification code sent');
-        setRemainingTime(60);
-      } else {
-        throw new Error(error || 'Failed to send new code');
-      }
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to resend code');
-    } finally {
-      setIsResendingCode(false);
-    }
-  };
-
+// This is a placeholder component that will be fully implemented later
+const VerificationForm: React.FC<VerificationFormProps> = ({ phone, onBack, onSuccess }) => {
   return (
-    <div className="space-y-6">
-      <h2 className="text-xl font-semibold text-center">
-        Enter the 6-digit code sent to {phone}
-      </h2>
-      <InputOTP
-        maxLength={6}
-        value={verificationCode}
-        onChange={setVerificationCode}
-        className="gap-2"
-      >
-        <InputOTPGroup>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <InputOTPSlot key={i} index={i} />
-          ))}
-        </InputOTPGroup>
-      </InputOTP>
-      <div className="flex justify-between items-center text-sm">
-        {remainingTime > 0 ? (
-          <span>Resend available in {remainingTime}s</span>
-        ) : (
-          <Button 
-            onClick={handleResend} 
-            disabled={isResendingCode} 
-            variant="link"
-            className="p-0"
-          >
-            {isResendingCode ? 'Resending...' : 'Resend Code'}
-          </Button>
-        )}
-      </div>
-      <div className="flex justify-between">
+    <Card>
+      <CardHeader>
+        <CardTitle>Verification Disabled</CardTitle>
+        <CardDescription>
+          Phone verification is currently disabled. Please use email verification instead.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p className="text-center">
+          This feature will be reimplemented in the final stage of development.
+        </p>
+      </CardContent>
+      <CardFooter className="flex justify-between">
         <Button onClick={onBack} variant="outline">Back</Button>
-        <Button 
-          onClick={handleVerify} 
-          disabled={isSubmitting || verificationCode.length !== 6}
-        >
-          {isSubmitting ? 'Verifying...' : 'Verify'}
-        </Button>
-      </div>
-    </div>
+        <Button onClick={onSuccess}>Continue</Button>
+      </CardFooter>
+    </Card>
   );
 };
 
