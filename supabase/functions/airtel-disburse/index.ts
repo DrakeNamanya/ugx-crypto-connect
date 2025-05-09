@@ -1,5 +1,4 @@
-
-import { serve } from 'https://deno.fresh.dev/std@v1/http/server.ts';
+import { serve } from 'https://deno.land/std@0.197.0/http/server.ts';
 
 const AIRTEL_API_URL = 'https://openapiuat.airtel.africa/standard/v2/disbursements/';
 
