@@ -9,6 +9,7 @@ import { HelmetProvider } from 'react-helmet-async';
 import { toast } from '@/components/ui/sonner';
 import AuthProvider from "./components/auth/AuthProvider";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import AuthRedirect from "./components/auth/AuthRedirect"; // Import the new AuthRedirect component
 import ErrorBoundary from "./components/ErrorBoundary";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
@@ -54,6 +55,7 @@ const App = () => {
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
                     <Route path="/forgot-password" element={<ForgotPassword />} />
+                    <Route path="/auth/callback" element={<AuthRedirect />} /> {/* Add the new auth callback route */}
                     
                     {/* Protected Routes */}
                     <Route 

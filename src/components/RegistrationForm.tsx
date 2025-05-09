@@ -52,6 +52,9 @@ const RegistrationForm = ({ onSuccess }: RegistrationFormProps) => {
     try {
       setIsSubmitting(true);
       
+      // Get current domain for redirects
+      const domain = window.location.origin;
+      
       // Register the user with Supabase Auth
       const { data, error } = await supabase.auth.signUp({
         email: values.email,
@@ -61,6 +64,7 @@ const RegistrationForm = ({ onSuccess }: RegistrationFormProps) => {
             full_name: values.fullName,
             phone: values.phone,
           },
+          emailRedirectTo: `${domain}/auth/callback` // Set the redirect URL to our auth callback handler
         }
       });
       

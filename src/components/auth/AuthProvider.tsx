@@ -14,6 +14,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Set loading to true while checking session
     setLoading(true);
 
+    // Handle hash params for auth callback
+    const handleHashChange = async () => {
+      if (window.location.hash && !location.pathname.includes('/auth/callback')) {
+        // Redirect to the auth callback handler page if we detect a hash but aren't on the callback page
+        navigate('/auth/callback', { replace: true });
+        return;
+      }
+    };
+
+    // Process hash parameters immediately on initial load
+    handleHashChange();
+
     // Check active session
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
