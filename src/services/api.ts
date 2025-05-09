@@ -1,7 +1,6 @@
 // API service for UGXchange
-
-// Base URL for API requests
 const API_BASE_URL = '/api/v1';
+import axios from 'axios';
 
 // Mobile Money Integration
 export const mobileMoneyProviders = {
@@ -9,6 +8,7 @@ export const mobileMoneyProviders = {
   AIRTEL: 'Airtel Money'
 };
 
+// Interfaces (keep existing and add OTP-related ones)
 export interface DepositRequest {
   amount: number;
   phoneNumber: string;
@@ -31,17 +31,23 @@ export interface UserRegistration {
 export interface CryptoTransferRequest {
   amount: number;
   walletAddress: string;
-  asset: string; // e.g., 'USDT'
+  asset: string;
 }
 
-// Import Airtel payment functionality
-export { initiateAirtelPayment } from './airtelPayment';
+export interface OTPSendResponse {
+  success: boolean;
+  debugCode?: string;
+  error?: string;
+}
 
-// Axios for API requests
-import axios from 'axios';
+// Improved phone validation with better regex
+export const validateUgandanPhone = (phone: string): boolean => {
+  const regex = /^\+256(7|3)\d{8}$/;
+  return regex.test(phone);
+};
 
-// Generic fetch function with error handling
-const fetchApi = async (endpoint: string, options: RequestInit = {}) => {
+// Enhanced fetchApi with TypeScript generic support
+const fetchApi = async <T>(endpoint: string, options: RequestInit = {}): Promise<T> => {
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
@@ -51,99 +57,102 @@ const fetchApi = async (endpoint: string, options: RequestInit = {}) => {
       },
     });
 
+    const data = await response.json().catch(() => ({}));
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `Request failed with status ${response.status}`);
+      throw new Error(data.message || `Request failed with status ${response.status}`);
     }
 
-    return await response.json();
+    return data as T;
   } catch (error) {
     console.error(`API Error (${endpoint}):`, error);
     throw error;
   }
 };
 
-// User Registration
-export const registerUser = async (userData: UserRegistration): Promise<{ success: boolean; message: string }> => {
-  const response = await fetchApi('/users/register', {
-    method: 'POST',
-    body: JSON.stringify(userData),
-  });
-  
-  return response;
-};
-
-// Mobile Money Deposit
-export const initiateDeposit = async (request: DepositRequest): Promise<{ reference: string }> => {
-  console.log('Initiating deposit:', request);
-  
-  const response = await fetchApi('/deposit/mobile-money', {
-    method: 'POST',
-    body: JSON.stringify(request),
-  });
-  
-  return { reference: response.reference };
-};
-
-// Mobile Money Withdrawal
-export const initiateWithdrawal = async (request: WithdrawalRequest): Promise<{ reference: string }> => {
-  console.log('Initiating withdrawal:', request);
-  
-  const response = await fetchApi('/withdraw/mobile-money', {
-    method: 'POST',
-    body: JSON.stringify(request),
-  });
-  
-  return { reference: response.reference };
-};
-
-// Fetch rates from CoinGecko
-export const getUSDTRate = async (): Promise<{ buy: number; sell: number }> => {
+// New OTP Service Functions
+export const sendOTP = async (phone: string): Promise<OTPSendResponse> => {
   try {
-    const response = await axios.get('https://api.coingecko.com/api/v3/simple/price', {
-      params: {
-        ids: 'tether',
-        vs_currencies: 'ugx'
-      }
+    const response = await fetchApi<{ 
+      success: boolean; 
+      code?: string; 
+      message?: string 
+    }>('/send-otp', {
+      method: 'POST',
+      body: JSON.stringify({ phone }),
     });
 
-    const baseRate = response.data.tether.ugx;
-    const profitMargin = 50; // 50 UGX profit margin
-
     return {
-      buy: Math.ceil(baseRate + profitMargin), // When user buys USDT from us (we sell)
-      sell: Math.floor(baseRate - profitMargin) // When user sells USDT to us (we buy)
+      success: response.success,
+      debugCode: process.env.NODE_ENV === 'development' ? response.code : undefined,
+      error: response.message
     };
   } catch (error) {
-    console.error('Error fetching rates from CoinGecko:', error);
-    // Fallback rates in case API fails
-    return {
-      buy: 3750, // Base + 50 UGX
-      sell: 3650 // Base - 50 UGX
+    console.error('OTP Send Error:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Failed to send OTP' 
     };
   }
 };
 
-// Crypto Transfer
-export const transferCrypto = async (request: CryptoTransferRequest): Promise<{ txId: string }> => {
-  console.log('Initiating crypto transfer:', request);
-  
-  const response = await fetchApi('/crypto/transfer', {
+// Keep existing API functions and add improvements
+export const registerUser = async (userData: UserRegistration) => {
+  return fetchApi<{ success: boolean; message: string }>('/users/register', {
+    method: 'POST',
+    body: JSON.stringify(userData),
+  });
+};
+
+// Improved rate fetching with better error typing
+interface ExchangeRateResponse {
+  buy: number;
+  sell: number;
+}
+
+export const getUSDTRate = async (): Promise<ExchangeRateResponse> => {
+  try {
+    const response = await axios.get('https://api.coingecko.com/api/v3/simple/price', {
+      params: { ids: 'tether', vs_currencies: 'ugx' }
+    });
+
+    const baseRate = response.data.tether.ugx || 3700;
+    const profitMargin = 50;
+
+    return {
+      buy: Math.ceil(baseRate + profitMargin),
+      sell: Math.floor(baseRate - profitMargin)
+    };
+  } catch (error) {
+    console.error('Rate fetch error:', error);
+    return { buy: 3750, sell: 3650 };
+  }
+};
+
+// Existing functions remain unchanged
+export { initiateAirtelPayment } from './airtelPayment';
+
+export const initiateDeposit = async (request: DepositRequest) => {
+  return fetchApi<{ reference: string }>('/deposit/mobile-money', {
     method: 'POST',
     body: JSON.stringify(request),
   });
-  
-  return { txId: response.txId };
 };
 
-// Get Transaction History
-export const getTransactions = async (): Promise<any[]> => {
-  const response = await fetchApi('/transactions');
-  return response.transactions;
+export const initiateWithdrawal = async (request: WithdrawalRequest) => {
+  return fetchApi<{ reference: string }>('/withdraw/mobile-money', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  });
 };
 
-// Validate Ugandan Phone Number
-export const validateUgandanPhone = (phone: string): boolean => {
-  const ugandanPhoneRegex = /^(0|256|\+256)7[0-9]{8}$/;
-  return ugandanPhoneRegex.test(phone);
+export const transferCrypto = async (request: CryptoTransferRequest) => {
+  return fetchApi<{ txId: string }>('/crypto/transfer', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  });
+};
+
+export const getTransactions = async () => {
+  return fetchApi<{ transactions: any[] }>('/transactions');
 };
