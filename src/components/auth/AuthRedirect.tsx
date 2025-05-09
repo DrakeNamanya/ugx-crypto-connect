@@ -16,10 +16,18 @@ const AuthRedirect: React.FC = () => {
       try {
         setIsLoading(true);
         
-        // Check if we have hash params from a redirect
-        const hashParams = window.location.hash;
+        // Get the hash from storage if it was saved during redirect
+        let hashParams = window.location.hash;
+        const storedHash = sessionStorage.getItem('authRedirectHash');
         
-        if (hashParams) {
+        if (storedHash && (!hashParams || hashParams.length < 1)) {
+          hashParams = storedHash;
+          // Clear the stored hash
+          sessionStorage.removeItem('authRedirectHash');
+        }
+        
+        if (hashParams && hashParams.length > 0) {
+          // Process the URL fragment (access_token, etc.)
           const { data, error } = await supabase.auth.getSession();
           
           if (error) throw error;
@@ -29,7 +37,30 @@ const AuthRedirect: React.FC = () => {
             toast.success('Authentication successful!', {
               description: 'Your email has been verified.'
             });
+          } else {
+            // Try to extract the token from the URL if the session isn't set
+            // This helps with the initial sign-up flow
+            const params = new URLSearchParams(hashParams.substring(1));
+            if (params.get('access_token')) {
+              const accessToken = params.get('access_token');
+              const refreshToken = params.get('refresh_token');
+              const expiresIn = params.get('expires_in');
+              
+              if (accessToken && refreshToken && expiresIn) {
+                const { data, error } = await supabase.auth.setSession({
+                  access_token: accessToken,
+                  refresh_token: refreshToken,
+                });
+                
+                if (error) throw error;
+                if (data.session) {
+                  setUser(data.session.user);
+                }
+              }
+            }
           }
+        } else {
+          console.log('No hash parameters found for auth redirect');
         }
       } catch (error) {
         console.error('Auth redirect error:', error);

@@ -16,8 +16,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Handle hash params for auth callback
     const handleHashChange = async () => {
-      if (window.location.hash && !location.pathname.includes('/auth/callback')) {
-        // Redirect to the auth callback handler page if we detect a hash but aren't on the callback page
+      const hash = window.location.hash;
+      
+      // Check if we have hash parameters but we're not on the callback page
+      if (hash && hash.length > 0 && !location.pathname.includes('/auth/callback')) {
+        // Save the original hash for the callback handler
+        sessionStorage.setItem('authRedirectHash', hash);
+        // Redirect to the auth callback handler page
         navigate('/auth/callback', { replace: true });
         return;
       }
@@ -26,7 +31,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Process hash parameters immediately on initial load
     handleHashChange();
 
-    // Check active session
+    // First set up the auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state changed:', event);
+      
+      // Update the user state when auth state changes
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      
+      // Redirect to dashboard if logged in and on auth pages
+      if (currentUser) {
+        if (location.pathname === '/login' || location.pathname === '/register') {
+          toast.success('Successfully authenticated!');
+          navigate('/dashboard');
+        }
+      }
+      
+      setLoading(false);
+    });
+
+    // Then check active session
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
         console.error('Error getting session:', error);
@@ -34,21 +58,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       
       setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      
-      // Redirect to dashboard if logged in and on the login or register page
-      if (currentUser && (location.pathname === '/login' || location.pathname === '/register')) {
-        navigate('/dashboard');
-      }
-      
       setLoading(false);
     });
 
