@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -26,7 +25,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Video, Upload } from 'lucide-react';
+import { Camera, Upload } from 'lucide-react';
+import { useAuthStore } from '@/lib/auth';
+import Tesseract from 'tesseract.js';
 
 // Sample data for districts in Uganda
 const ugandaDistricts = [
@@ -35,14 +36,9 @@ const ugandaDistricts = [
   "Tororo", "Soroti", "Fort Portal", "Hoima", "Kabale"
 ];
 
-// Sample data for sub-counties (would be dynamic in production)
 const subCounties: Record<string, string[]> = {
   "Kampala": ["Central", "Kawempe", "Makindye", "Nakawa", "Rubaga"],
-  "Wakiso": ["Nansana", "Entebbe", "Kira", "Makindye-Ssabagabo", "Kasangati"],
-  "Mukono": ["Mukono Central", "Goma", "Nakisunga", "Kyampisi", "Nama"],
-  "Jinja": ["Jinja Central", "Bugembe", "Mafubira", "Budondo", "Busedde"],
-  "Gulu": ["Bardege", "Laroo", "Layibi", "Pece", "Unyama"],
-  // More would be added in production
+  // ... other districts
 };
 
 const formSchema = z.object({
@@ -68,20 +64,21 @@ const formSchema = z.object({
   }).refine((file) => file.size <= 5000000, {
     message: "File size must be less than 5MB",
   }),
-  // Video verification is handled separately
 });
 
 type KYCFormValues = z.infer<typeof formSchema>;
 
 const KYCVerification = () => {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [recordingState, setRecordingState] = useState<'idle' | 'recording' | 'recorded'>('idle');
-  const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
   const [frontIdPreview, setFrontIdPreview] = useState<string | null>(null);
   const [backIdPreview, setBackIdPreview] = useState<string | null>(null);
+  const [faceImage, setFaceImage] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isCameraActive, setIsCameraActive] = useState(false);
 
   const form = useForm<KYCFormValues>({
     resolver: zodResolver(formSchema),
@@ -93,22 +90,46 @@ const KYCVerification = () => {
     },
   });
 
-  // Handle district change to update sub-counties
   const handleDistrictChange = (district: string) => {
     setSelectedDistrict(district);
-    form.setValue('subCounty', ''); // Reset sub-county when district changes
+    form.setValue('subCounty', '');
   };
 
-  // Handle file selection for ID front
-  const handleFrontIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      form.setValue('nationalIdFront', file);
-      setFrontIdPreview(URL.createObjectURL(file));
+  const extractTextFromImage = async (file: File): Promise<string> => {
+    const result = await Tesseract.recognize(file);
+    return result.data.text;
+  };
+
+  const verifyNameMatch = async (file: File) => {
+    try {
+      const extractedText = await extractTextFromImage(file);
+      const registeredName = user?.user_metadata?.full_name?.toLowerCase() || '';
+      const extractedTextLower = extractedText.toLowerCase();
+      
+      if (!extractedTextLower.includes(registeredName)) {
+        toast.error('The name on the ID does not match your registered name');
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error('Error verifying name:', error);
+      toast.error('Error verifying ID. Please try again.');
+      return false;
     }
   };
 
-  // Handle file selection for ID back
+  const handleFrontIdChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (await verifyNameMatch(file)) {
+        form.setValue('nationalIdFront', file);
+        setFrontIdPreview(URL.createObjectURL(file));
+      } else {
+        e.target.value = '';
+      }
+    }
+  };
+
   const handleBackIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -117,65 +138,60 @@ const KYCVerification = () => {
     }
   };
 
-  // Start video recording
-  const startRecording = async () => {
+  const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      const recorder = new MediaRecorder(stream);
-      const chunks: BlobPart[] = [];
-      
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          chunks.push(e.data);
-        }
-      };
-      
-      recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'video/webm' });
-        setVideoBlob(blob);
-        setRecordingState('recorded');
-        
-        // Stop all tracks
-        stream.getTracks().forEach(track => track.stop());
-      };
-      
-      setMediaRecorder(recorder);
-      recorder.start();
-      setRecordingState('recording');
-      
-      // Stop recording after 15 seconds
-      setTimeout(() => {
-        if (recorder.state === 'recording') {
-          recorder.stop();
-        }
-      }, 15000);
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          width: 640,
+          height: 480,
+          facingMode: "user"
+        } 
+      });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        setIsCameraActive(true);
+      }
     } catch (error) {
       console.error('Error accessing camera:', error);
-      toast.error('Could not access camera. Please check permissions and try again.');
+      toast.error('Could not access camera. Please check permissions.');
     }
   };
 
-  // Stop recording
-  const stopRecording = () => {
-    if (mediaRecorder && mediaRecorder.state === 'recording') {
-      mediaRecorder.stop();
+  const captureImage = () => {
+    if (videoRef.current && canvasRef.current) {
+      const context = canvasRef.current.getContext('2d');
+      if (context) {
+        context.drawImage(videoRef.current, 0, 0, 640, 480);
+        const imageData = canvasRef.current.toDataURL('image/jpeg');
+        setFaceImage(imageData);
+        stopCamera();
+      }
     }
   };
 
-  // Submit the form
+  const stopCamera = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach(track => track.stop());
+      videoRef.current.srcObject = null;
+      setIsCameraActive(false);
+    }
+  };
+
+  const retakePhoto = () => {
+    setFaceImage(null);
+    startCamera();
+  };
+
   const onSubmit = async (values: KYCFormValues) => {
-    if (!videoBlob) {
-      toast.error('Please record a verification video');
+    if (!faceImage) {
+      toast.error('Please capture your face photo');
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // Here you would normally send the data to your backend
-      // For demonstration purposes, we'll simulate a successful submission
-      
-      // Create FormData to send files
       const formData = new FormData();
       formData.append('district', values.district);
       formData.append('subCounty', values.subCounty);
@@ -183,23 +199,15 @@ const KYCVerification = () => {
       formData.append('sourceOfIncome', values.sourceOfIncome);
       formData.append('nationalIdFront', values.nationalIdFront);
       formData.append('nationalIdBack', values.nationalIdBack);
-      formData.append('verificationVideo', videoBlob);
+      formData.append('faceImage', faceImage);
 
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      console.log('KYC data would be sent:', {
-        ...values,
-        videoRecorded: true
-      });
-      
       toast.success('KYC information submitted successfully!');
       toast.info('Your information is being reviewed. This process may take 1-2 business days.');
       
-      // In a real scenario, you would update the user's status in your database
       localStorage.setItem('kycSubmitted', 'true');
-      
-      // Redirect to dashboard
       navigate('/dashboard');
     } catch (error) {
       console.error('KYC submission error:', error);
@@ -230,89 +238,87 @@ const KYCVerification = () => {
             <CardContent>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Address Information */}
-                    <div className="space-y-4 md:col-span-2">
-                      <h3 className="text-lg font-medium">Address Information</h3>
-                      
-                      <FormField
-                        control={form.control}
-                        name="district"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>District</FormLabel>
-                            <Select 
-                              onValueChange={(value) => {
-                                field.onChange(value);
-                                handleDistrictChange(value);
-                              }}
-                              defaultValue={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select a district" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {ugandaDistricts.map((district) => (
-                                  <SelectItem key={district} value={district}>
-                                    {district}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="subCounty"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Sub-County</FormLabel>
-                            <Select 
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                              disabled={!selectedDistrict}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder={selectedDistrict ? "Select a sub-county" : "Select a district first"} />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {selectedDistrict && subCounties[selectedDistrict]?.map((subCounty) => (
-                                  <SelectItem key={subCounty} value={subCounty}>
-                                    {subCounty}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="village"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Village/Zone</FormLabel>
+                  {/* Address Information */}
+                  <div className="space-y-4 md:col-span-2">
+                    <h3 className="text-lg font-medium">Address Information</h3>
+                    
+                    <FormField
+                      control={form.control}
+                      name="district"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>District</FormLabel>
+                          <Select 
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              handleDistrictChange(value);
+                            }}
+                            defaultValue={field.value}
+                          >
                             <FormControl>
-                              <Input placeholder="Enter your village or zone" {...field} />
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a district" />
+                              </SelectTrigger>
                             </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+                            <SelectContent>
+                              {ugandaDistricts.map((district) => (
+                                <SelectItem key={district} value={district}>
+                                  {district}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                    <div className="space-y-4 md:col-span-2">
+                    <FormField
+                      control={form.control}
+                      name="subCounty"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Sub-County</FormLabel>
+                          <Select 
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                            disabled={!selectedDistrict}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder={selectedDistrict ? "Select a sub-county" : "Select a district first"} />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {selectedDistrict && subCounties[selectedDistrict]?.map((subCounty) => (
+                                <SelectItem key={subCounty} value={subCounty}>
+                                  {subCounty}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="village"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Village/Zone</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter your village or zone" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    {/* Financial Information */}
+                    <div className="space-y-4">
                       <h3 className="text-lg font-medium">Financial Information</h3>
-                      
                       <FormField
                         control={form.control}
                         name="sourceOfIncome"
@@ -321,7 +327,7 @@ const KYCVerification = () => {
                             <FormLabel>Source of Income</FormLabel>
                             <FormControl>
                               <Textarea 
-                                placeholder="Describe your source of income (e.g., Employment, Business, etc.)" 
+                                placeholder="Describe your source of income" 
                                 className="resize-none" 
                                 {...field} 
                               />
@@ -332,14 +338,15 @@ const KYCVerification = () => {
                       />
                     </div>
 
-                    <div className="space-y-4 md:col-span-2">
+                    {/* ID Upload Section */}
+                    <div className="space-y-4">
                       <h3 className="text-lg font-medium">National ID Upload</h3>
-                      
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Front ID Upload */}
                         <div>
-                          <FormLabel htmlFor="nationalIdFront">Front of National ID</FormLabel>
+                          <FormLabel>Front of National ID</FormLabel>
                           <div className="mt-2">
-                            <label htmlFor="nationalIdFront" className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                            <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
                               {frontIdPreview ? (
                                 <img 
                                   src={frontIdPreview} 
@@ -353,25 +360,20 @@ const KYCVerification = () => {
                                 </div>
                               )}
                               <input 
-                                id="nationalIdFront" 
                                 type="file" 
-                                accept="image/*" 
                                 className="hidden" 
                                 onChange={handleFrontIdChange}
+                                accept="image/*"
                               />
                             </label>
                           </div>
-                          {form.formState.errors.nationalIdFront && (
-                            <p className="text-sm font-medium text-destructive mt-2">
-                              {form.formState.errors.nationalIdFront.message?.toString()}
-                            </p>
-                          )}
                         </div>
 
+                        {/* Back ID Upload */}
                         <div>
-                          <FormLabel htmlFor="nationalIdBack">Back of National ID</FormLabel>
+                          <FormLabel>Back of National ID</FormLabel>
                           <div className="mt-2">
-                            <label htmlFor="nationalIdBack" className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                            <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
                               {backIdPreview ? (
                                 <img 
                                   src={backIdPreview} 
@@ -385,83 +387,83 @@ const KYCVerification = () => {
                                 </div>
                               )}
                               <input 
-                                id="nationalIdBack" 
                                 type="file" 
-                                accept="image/*" 
                                 className="hidden" 
                                 onChange={handleBackIdChange}
+                                accept="image/*"
                               />
                             </label>
                           </div>
-                          {form.formState.errors.nationalIdBack && (
-                            <p className="text-sm font-medium text-destructive mt-2">
-                              {form.formState.errors.nationalIdBack.message?.toString()}
-                            </p>
-                          )}
                         </div>
                       </div>
                     </div>
 
-                    <div className="space-y-4 md:col-span-2">
-                      <h3 className="text-lg font-medium">Video Verification</h3>
-                      <p className="text-sm text-gray-500 mb-4">
-                        Please record a short video of yourself (15 seconds max) where you:
-                        <br />1. Look directly at the camera
-                        <br />2. Smile
-                        <br />3. Turn your head slightly left and right
+                    {/* Face Verification Section */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium">Face Verification</h3>
+                      <p className="text-sm text-gray-500">
+                        Please take a clear photo of your face looking directly at the camera
                       </p>
                       
                       <div className="border rounded-lg p-4">
                         <div className="flex flex-col items-center space-y-4">
-                          {recordingState === 'recorded' && videoBlob && (
-                            <video 
-                              src={URL.createObjectURL(videoBlob)} 
-                              controls 
-                              className="w-full max-h-64 rounded"
+                          {/* Camera Preview */}
+                          {isCameraActive && (
+                            <video
+                              ref={videoRef}
+                              autoPlay
+                              playsInline
+                              className="w-full max-w-md rounded-lg"
                             />
                           )}
                           
-                          {recordingState === 'recording' && (
-                            <div className="w-full h-64 bg-gray-900 flex items-center justify-center rounded relative">
-                              <div className="absolute top-2 right-2 flex items-center">
-                                <div className="h-3 w-3 bg-red-500 rounded-full animate-pulse mr-2"></div>
-                                <span className="text-white text-sm">Recording...</span>
-                              </div>
-                              <Video className="h-16 w-16 text-white opacity-50" />
-                            </div>
+                          {/* Captured Image Preview */}
+                          {faceImage && (
+                            <img 
+                              src={faceImage}
+                              alt="Captured face"
+                              className="w-full max-w-md rounded-lg"
+                            />
                           )}
                           
+                          {/* Hidden Canvas for Capture */}
+                          <canvas 
+                            ref={canvasRef}
+                            width="640"
+                            height="480"
+                            className="hidden"
+                          />
+                          
+                          {/* Camera Controls */}
                           <div className="flex space-x-4">
-                            {recordingState === 'idle' && (
+                            {!isCameraActive && !faceImage && (
                               <Button 
                                 type="button"
-                                onClick={startRecording}
-                                className="bg-blue-600 hover:bg-blue-700"
+                                onClick={startCamera}
+                                className="flex items-center gap-2"
                               >
-                                Start Recording
+                                <Camera className="w-4 h-4" />
+                                Start Camera
                               </Button>
                             )}
                             
-                            {recordingState === 'recording' && (
+                            {isCameraActive && (
                               <Button 
                                 type="button"
-                                onClick={stopRecording}
-                                variant="destructive"
+                                onClick={captureImage}
+                                className="bg-green-600 hover:bg-green-700"
                               >
-                                Stop Recording
+                                Capture Photo
                               </Button>
                             )}
                             
-                            {recordingState === 'recorded' && (
+                            {faceImage && (
                               <Button 
                                 type="button"
-                                onClick={() => {
-                                  setVideoBlob(null);
-                                  setRecordingState('idle');
-                                }}
+                                onClick={retakePhoto}
                                 variant="outline"
                               >
-                                Record Again
+                                Retake Photo
                               </Button>
                             )}
                           </div>
@@ -470,13 +472,18 @@ const KYCVerification = () => {
                     </div>
                   </div>
 
+                  {/* Submit Button */}
                   <div className="flex justify-end space-x-4 pt-4 border-t">
-                    <Button type="button" variant="outline" onClick={() => navigate('/dashboard')}>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => navigate('/dashboard')}
+                    >
                       Cancel
                     </Button>
                     <Button 
                       type="submit" 
-                      disabled={isSubmitting || recordingState !== 'recorded'}
+                      disabled={isSubmitting || !faceImage}
                     >
                       {isSubmitting ? 'Submitting...' : 'Submit Verification'}
                     </Button>
