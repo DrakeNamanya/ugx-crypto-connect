@@ -5,21 +5,20 @@ import axios from 'axios';
 // Mobile Money Integration
 export const mobileMoneyProviders = {
   MTN: 'MTN Mobile Money',
-  AIRTEL: 'Airtel Money',
-  AFRICELL: 'Africell Money'
+  AIRTEL: 'Airtel Money'
 };
 
 // Interfaces (keep existing and add email-related ones)
 export interface DepositRequest {
   amount: number;
   phoneNumber: string;
-  provider: 'MTN' | 'AIRTEL' | 'AFRICELL';
+  provider: 'MTN' | 'AIRTEL';
 }
 
 export interface WithdrawalRequest {
   amount: number;
   phoneNumber: string;
-  provider: 'MTN' | 'AIRTEL' | 'AFRICELL';
+  provider: 'MTN' | 'AIRTEL';
 }
 
 export interface UserRegistration {

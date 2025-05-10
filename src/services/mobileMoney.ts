@@ -7,7 +7,7 @@ import { handleApiError, isThrottled } from '@/lib/api-helpers';
 export interface MobileMoneyRequest {
   phoneNumber: string;
   amount: number;
-  provider: 'MTN' | 'AIRTEL' | 'AFRICELL';
+  provider: 'MTN' | 'AIRTEL';
   reference?: string;
 }
 
@@ -26,8 +26,7 @@ export const generateTransactionRef = (): string => {
 // Base URLs for different provider APIs (replace with actual endpoints in a real implementation)
 const PROVIDER_URLS = {
   MTN: '/api/v1/mtn/payment',
-  AIRTEL: '/api/v1/airtel/payment',
-  AFRICELL: '/api/v1/africell/payment'
+  AIRTEL: '/api/v1/airtel/payment'
 };
 
 // Process mobile money deposit

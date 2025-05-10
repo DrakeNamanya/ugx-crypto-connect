@@ -36,7 +36,7 @@ const formSchema = z.object({
   phoneNumber: z.string().regex(/^(0|256|\+256)7[0-9]{8}$/, { 
     message: 'Please enter a valid Ugandan phone number' 
   }),
-  provider: z.enum(['MTN', 'AIRTEL', 'AFRICELL'], {
+  provider: z.enum(['MTN', 'AIRTEL'], {
     required_error: 'Please select a mobile money provider',
   }),
 });
@@ -78,7 +78,7 @@ const WithdrawalForm = () => {
       const result = await processMobileMoneyWithdrawal({
         amount: values.amount,
         phoneNumber: values.phoneNumber,
-        provider: values.provider as 'MTN' | 'AIRTEL' | 'AFRICELL',
+        provider: values.provider as 'MTN' | 'AIRTEL',
         reference
       });
       
@@ -182,7 +182,6 @@ const WithdrawalForm = () => {
                         {label}
                       </SelectItem>
                     ))}
-                    <SelectItem value="AFRICELL">Africell Money</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
