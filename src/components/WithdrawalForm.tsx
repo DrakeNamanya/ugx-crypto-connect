@@ -22,10 +22,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { mobileMoneyProviders, getUSDTRate } from '@/services/api';
-import { initiateAirtelWithdrawal } from '@/services/airtelDisbursement';
 import { useQuery } from '@tanstack/react-query';
 import { canMakeHighValueTransaction, isKYCVerified } from '@/services/kycVerification';
 import { Link } from 'react-router-dom';
+import { processMobileMoneyWithdrawal, generateTransactionRef } from '@/services/mobileMoney';
 
 // Define the KYC limits
 const KYC_WITHDRAWAL_LIMIT = 50000; // 50,000 UGX
@@ -36,7 +36,7 @@ const formSchema = z.object({
   phoneNumber: z.string().regex(/^(0|256|\+256)7[0-9]{8}$/, { 
     message: 'Please enter a valid Ugandan phone number' 
   }),
-  provider: z.enum(['MTN', 'AIRTEL'], {
+  provider: z.enum(['MTN', 'AIRTEL', 'AFRICELL'], {
     required_error: 'Please select a mobile money provider',
   }),
 });
@@ -72,25 +72,24 @@ const WithdrawalForm = () => {
       setIsSubmitting(true);
       
       // Generate a unique reference for this transaction
-      const reference = `WDR${Math.random().toString(36).substring(2, 10)}${Date.now()}`;
+      const reference = generateTransactionRef();
       
-      if (values.provider === 'AIRTEL') {
-        const result = await initiateAirtelWithdrawal({
-          amount: values.amount,
-          phoneNumber: values.phoneNumber,
-          reference,
+      // Process the withdrawal using our new mobile money service
+      const result = await processMobileMoneyWithdrawal({
+        amount: values.amount,
+        phoneNumber: values.phoneNumber,
+        provider: values.provider as 'MTN' | 'AIRTEL' | 'AFRICELL',
+        reference
+      });
+      
+      if (result.success) {
+        toast.success('Withdrawal request processed successfully');
+        toast.info(`Funds will be sent to ${values.phoneNumber}`, {
+          description: `Reference: ${result.reference}`,
         });
-        
-        if (result) {
-          toast.success('Withdrawal request processed successfully');
-          toast.info(`Funds will be sent to ${values.phoneNumber}`, {
-            description: `Reference: ${reference}`,
-          });
-          form.reset();
-        }
+        form.reset();
       } else {
-        // MTN implementation will go here when ready
-        toast.error('MTN integration coming soon');
+        toast.error(`Failed to process withdrawal: ${result.message}`);
       }
     } catch (error) {
       console.error('Withdrawal error:', error);
@@ -183,6 +182,7 @@ const WithdrawalForm = () => {
                         {label}
                       </SelectItem>
                     ))}
+                    <SelectItem value="AFRICELL">Africell Money</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
